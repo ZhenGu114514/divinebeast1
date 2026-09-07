@@ -1,0 +1,32 @@
+{
+  "display": {
+    "title": {"text": "祂之觉醒"},
+    "description": {"text": "获得『祂』——解锁时刻饰品的合成与锻造配方"},
+    "icon": {"item": "divinebeast:deity"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:start",
+  "criteria": {
+    "got_deity": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:deity"]}]
+      }
+    }
+  },
+  "rewards": {
+    "recipes": [
+      "divinebeast:craft_nonexist_nonexist",
+      "divinebeast:craft_nonexist_exist",
+      "divinebeast:craft_maybe_exist",
+      "divinebeast:craft_exist_exist",
+      "divinebeast:craft_impossible_nonexist",
+      "divinebeast:smith_nonexist_exist",
+      "divinebeast:smith_maybe_exist",
+      "divinebeast:smith_exist_exist",
+      "divinebeast:smith_impossible_nonexist"
+    ]
+  }
+}

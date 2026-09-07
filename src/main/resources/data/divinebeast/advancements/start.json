@@ -1,0 +1,14 @@
+{
+  "display": {
+    "title": {"text": "Divine & Beast"},
+    "description": {"text": "祂 · 兽 的旅程开始"},
+    "icon": {"item": "divinebeast:deity"},
+    "background": "minecraft:textures/block/obsidian.png",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "start": {"trigger": "minecraft:tick"}
+  }
+}

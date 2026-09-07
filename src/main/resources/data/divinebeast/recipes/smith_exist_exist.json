@@ -1,0 +1,1 @@
+{"type":"minecraft:smithing_transform","template":{"item":"minecraft:netherite_upgrade_smithing_template"},"base":{"item":"divinebeast:maybe_exist"},"addition":{"item":"minecraft:golden_apple"},"result":{"item":"divinebeast:exist_exist"}}

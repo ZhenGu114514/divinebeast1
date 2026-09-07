@@ -56,6 +56,7 @@
   "divinebeast.msg.m5_revive": "The Moment of Impossible Nonexist revives you (20s invulnerability)!",
   "divinebeast.msg.m5_cooldown": "The Moment of Impossible Nonexist is on cooldown: %s s remaining.",
   "divinebeast.msg.samsara_revive": "Samsara triggers: 1 layer consumed - you revive (cooldowns refreshed, stacks maxed).",
+  "divinebeast.msg.first_chest": "The Divine and the Beast have appeared in your first chest!",
 
   "item.divinebeast.beast.lore_curse": "Born of miracles, wandering through chaos.",
   "item.divinebeast.beast.lore_redemption": "Samsara within; transcendence eternal.",

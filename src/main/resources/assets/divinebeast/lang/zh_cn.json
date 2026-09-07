@@ -56,6 +56,7 @@
   "divinebeast.msg.m5_revive": "『不可能存在不可能存在时刻』生效：你被复活了（20 秒无敌）",
   "divinebeast.msg.m5_cooldown": "『不可能存在不可能存在时刻』冷却中，剩余 %s 秒",
   "divinebeast.msg.samsara_revive": "『轮回』发动：消耗 1 层轮回，你复活了（刷新冷却并将叠层拉满）",
+  "divinebeast.msg.first_chest": "『祂』与『兽』已出现在你打开的第一个箱子中！",
 
   "item.divinebeast.beast.lore_curse": "生于奇迹，行于混沌",
   "item.divinebeast.beast.lore_redemption": "内生轮回，超脱永恒",

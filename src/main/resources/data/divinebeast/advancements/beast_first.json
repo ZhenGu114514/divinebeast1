@@ -1,0 +1,30 @@
+{
+  "display": {
+    "title": {"text": "兽之觉醒"},
+    "description": {"text": "获得『兽』——解锁法则饰品的合成配方"},
+    "icon": {"item": "divinebeast:beast"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:start",
+  "criteria": {
+    "got_beast": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:beast"]}]
+      }
+    }
+  },
+  "rewards": {
+    "recipes": [
+      "divinebeast:craft_supreme",
+      "divinebeast:craft_wisdom",
+      "divinebeast:craft_life",
+      "divinebeast:craft_chaos",
+      "divinebeast:craft_self",
+      "divinebeast:craft_devour",
+      "divinebeast:craft_samsara"
+    ]
+  }
+}
