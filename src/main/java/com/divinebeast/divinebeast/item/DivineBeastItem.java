@@ -62,6 +62,27 @@ public class DivineBeastItem extends Item {
         } else if (stack.is(ModItems.IMPOSSIBLE_NONEXIST.get())) {
             tooltip.add(Component.translatable("item.divinebeast.impossible_nonexist.lore")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.SUPREME.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.supreme.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.WISDOM.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.wisdom.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.LIFE.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.life.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.CHAOS.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.chaos.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.SELF.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.self.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.DEVOUR.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.devour.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.SAMSARA.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.samsara.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
         // 效果描述（所有物品通用）：item.divinebeast.<id>.desc，可含换行符
         tooltip.add(Component.translatable(stack.getDescriptionId() + ".desc")

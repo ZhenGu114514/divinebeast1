@@ -853,4 +853,9 @@ public final class BeastEffects {
     public static int lawProgress(LivingEntity entity) {
         return wearingBeast(entity) ? lawCount(entity) : 0;
     }
+
+    /** 供客户端 tooltip：某条法则是否已佩戴（其诅咒已解除） */
+    public static boolean lawEquipped(LivingEntity entity, int index) {
+        return index >= 0 && index < LAW_SLOTS.length && lawWorn(entity, index);
+    }
 }

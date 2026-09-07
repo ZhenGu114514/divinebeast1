@@ -41,7 +41,7 @@
 
   "key.divinebeast.toggle_respawn": "Toggle Redemption Strike",
   "key.categories.divinebeast": "Divine & Beast",
-  "divinebeast.msg.redemption_respawn_on": "Redemption Strike: ON (attacks heal foes; true damage vs marked; marked foes turn into villagers)",
+  "divinebeast.msg.redemption_respawn_on": "Redemption Strike: ON (attacks heal foes; true damage vs marked; defeating a marked foe grants 5s of x1000 attack)",
   "divinebeast.msg.redemption_respawn_off": "Redemption Strike: OFF (normal damage; no respawn of marked foes)",
 
   "item.divinebeast.nonexist_nonexist.lore": "Nothing has happened yet.",
@@ -62,7 +62,15 @@
   "item.divinebeast.beast.lore_self": "Born within samsara; transcending the self.",
   "item.divinebeast.beast.progress": "Laws ready: %s / 7",
 
-  "item.divinebeast.deity.desc": "Wearing the Divine inflicts 5 Moment curses, each removed by wearing its Moment accessory. With all 5, enter Redemption: creative-style flight (double-tap jump to take off/land, no fall damage), mobs ignore you, attackers are cleansed and marked.\nC toggles Redemption Strike: attacks heal the target instead of damaging; marked foes take armor-ignoring true damage; slaying a marked foe turns it into a villager in place; while redeemed you take no fall damage and are immune to harmful effects and knockback.",
+  "item.divinebeast.supreme.lore": "Within samsara reigns the Supreme God.",
+  "item.divinebeast.wisdom.lore": "Know all things: the past, the present, the future.",
+  "item.divinebeast.life.lore": "Mother of all life.",
+  "item.divinebeast.chaos.lore": "Everything shall fall into chaos.",
+  "item.divinebeast.self.lore": "The protagonist of all samsara.",
+  "item.divinebeast.devour.lore": "Walking through chaos, devouring chaos.",
+  "item.divinebeast.samsara.lore": "Four epochs end in annihilation.",
+
+  "item.divinebeast.deity.desc": "Wearing the Divine inflicts 5 Moment curses, each removed by wearing its Moment accessory. With all 5, enter Redemption: creative-style flight (double-tap jump to take off/land, no fall damage), mobs ignore you, attackers are cleansed and marked.\nC toggles Redemption Strike: attacks heal the target instead of damaging; marked foes take armor-ignoring true damage; slaying a marked foe grants 5s of x1000 attack; while redeemed you take no fall damage and are immune to harmful effects and knockback.",
   "item.divinebeast.beast.desc": "Wearing the Beast removes Law curses one by one; six Laws (no Self) -> Salvation: 5s stun/+50% vs stunned/lifesteal/mob rampage/no hunger/no drops. All seven -> Self: armor-break 10s stun/+200% vs stunned/full lifesteal/16-block AOE/doubled HP & attack/death stacking.",
   "item.divinebeast.nonexist_nonexist.desc": "Worn: max health, XP, tool durability and armor can never decrease (instant repair; XP/health/armor protected at their highest levels).",
   "item.divinebeast.nonexist_exist.desc": "Worn: your attacks prevent the target from healing for 3s; when hurt, the attacker suffers the same damage as true damage.",
@@ -75,5 +83,18 @@
   "item.divinebeast.chaos.desc": "Worn: 90% chance attacks deal double damage; 9% deal 50% of target max HP; 1% deal 99% (both ignore armor).",
   "item.divinebeast.self.desc": "Worn: gain 1 stack on each hit or every 5s (max 888); each stack grants +20 absorption hearts and +20 attack; lose 1 stack per 2 absorption hearts consumed.",
   "item.divinebeast.devour.desc": "Worn: damage is absorbed by hunger while food >4; inactive at food 0-4; with no hunger (Self stage) you take no damage.",
-  "item.divinebeast.samsara.desc": "Worn: gain 1 Samsara layer every (180 - level/10)s (max 100); on death consume 1 layer to revive, refresh mod cooldowns and max stacks; no XP loss on death."
+  "item.divinebeast.samsara.desc": "Worn: gain 1 Samsara layer every (180 - level/10)s (max 100); on death consume 1 layer to revive, refresh mod cooldowns and max stacks; no XP loss on death.",
+
+  "divinebeast.tooltip.deity_curse_0": "Moment of Nonexist–Nonexist: max HP 2, XP 0, tool durability 1, armor 0",
+  "divinebeast.tooltip.deity_curse_1": "Moment of Nonexist–Exist: your attacks fully heal the target; you take that damage",
+  "divinebeast.tooltip.deity_curse_2": "Moment of Maybe Exist: random teleport when dealing or taking damage (1s cooldown)",
+  "divinebeast.tooltip.deity_curse_3": "Moment of Exist–Exist: while any potion effect is active, lose 50% remaining HP/s (min 1)",
+  "divinebeast.tooltip.deity_curse_4": "Moment of Impossible Nonexist: dying when a totem/revival would trigger",
+  "divinebeast.tooltip.beast_curse_0": "Supreme: your attacks deal a fixed 1 damage",
+  "divinebeast.tooltip.beast_curse_1": "Wisdom: non-physical damage taken is doubled",
+  "divinebeast.tooltip.beast_curse_2": "Life: all healing becomes equal damage",
+  "divinebeast.tooltip.beast_curse_3": "Chaos: attacks miss 50%; 50% chance damage taken is doubled",
+  "divinebeast.tooltip.beast_curse_4": "Self: +1 stack every 10s (max 88): +2 absorption/+2 attack; -1 stack per 2 absorption consumed",
+  "divinebeast.tooltip.beast_curse_5": "Devour: hunger cannot recover; 2 HP/s while starving",
+  "divinebeast.tooltip.beast_curse_6": "Samsara: revival invalid; lethal hits send you to spawn and halve your HP"
 }

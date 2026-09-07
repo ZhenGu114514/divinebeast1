@@ -70,6 +70,7 @@ public final class CuriosEffects {
     private static final UUID ARMOR_LOCK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000002");
     private static final UUID MOB_HEALTH_100 = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000003");
     private static final UUID KNOCKBACK_RES = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000004");
+    private static final UUID REDEEM_ATK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000005");
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
     private static final int CURSE_LIFE_LOCK = 0;   // 不存在不存在时刻
@@ -174,6 +175,9 @@ public final class CuriosEffects {
             return;
         }
         Player player = event.player;
+
+        // 攻击力×1000 奖励到期收回
+        expireDivineSwing(player, player.level().getGameTime());
 
         // 飞行 / 收回
         if (phaseTwo(player)) {
@@ -509,19 +513,12 @@ public final class CuriosEffects {
         if (!(killer instanceof Player player) || !(player.level() instanceof ServerLevel serverLevel)) {
             return;
         }
-        // 默认开启；按 C 键（服务端持久化开关）关闭后不再转化村民
+        // 默认开启；按 C 键（服务端持久化开关）关闭后无奖励
         if (!CuriosEffectsState.respawnToggle(player)) {
             return;
         }
-        serverLevel.getServer().execute(() -> {
-            // 击败带救赎印记的生物 → 原地生成一个村民
-            Entity villager = net.minecraft.world.entity.EntityType.VILLAGER.create(serverLevel);
-            if (villager == null) {
-                return;
-            }
-            villager.moveTo(dead.getX(), dead.getY(), dead.getZ(), dead.getYRot(), dead.getXRot());
-            serverLevel.addFreshEntity(villager);
-        });
+        // 击败带救赎印记的生物 → 自身获得 5 秒攻击力 ×1000
+        grantDivineSwing(player);
     }
 
     private static void onTargetChange(LivingChangeTargetEvent event) {
@@ -558,6 +555,39 @@ public final class CuriosEffects {
     }
 
     private static final java.util.Map<java.util.UUID, Long> lastTeleportTick = new java.util.HashMap<>();
+    private static final java.util.Map<java.util.UUID, Long> REDEEM_SWING_UNTIL = new java.util.HashMap<>();
+
+    /** 击败带救赎印记的生物 → 5 秒攻击力 ×1000 */
+    private static void grantDivineSwing(Player player) {
+        AttributeInstance atk = player.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (atk == null) {
+            return;
+        }
+        atk.removeModifier(REDEEM_ATK);
+        double natural = atk.getValue();
+        double delta = natural * 999.0D;
+        if (delta > 0.001D) {
+            atk.addPermanentModifier(new AttributeModifier(REDEEM_ATK, "divinebeast_redeem_swing", delta,
+                    AttributeModifier.Operation.ADDITION));
+        }
+        REDEEM_SWING_UNTIL.put(player.getUUID(), player.level().getGameTime() + 100L);
+    }
+
+    private static void expireDivineSwing(Player player, long now) {
+        Long until = REDEEM_SWING_UNTIL.get(player.getUUID());
+        if (until != null && now >= until) {
+            REDEEM_SWING_UNTIL.remove(player.getUUID());
+            AttributeInstance atk = player.getAttribute(Attributes.ATTACK_DAMAGE);
+            if (atk != null) {
+                atk.removeModifier(REDEEM_ATK);
+            }
+        }
+    }
+
+    /** 供客户端 tooltip：某件时刻饰品是否已佩戴（其诅咒已解除） */
+    public static boolean momentWorn(LivingEntity entity, int index) {
+        return index >= 0 && index < MOMENT_SLOTS.length && wearingMoment(entity, index);
+    }
 
     /** 供客户端 tooltip 使用的轻量状态查询（需玩家实体，client/server 均可） */
     public static int momentProgress(LivingEntity entity) {
