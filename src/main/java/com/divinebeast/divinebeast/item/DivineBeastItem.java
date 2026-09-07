@@ -84,8 +84,13 @@ public class DivineBeastItem extends Item {
             tooltip.add(Component.translatable("item.divinebeast.samsara.lore")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
-        // 效果描述（所有物品通用）：item.divinebeast.<id>.desc，可含换行符
-        tooltip.add(Component.translatable(stack.getDescriptionId() + ".desc")
-                .withStyle(ChatFormatting.GRAY));
+        // 效果描述：非核心物品始终显示；核心物品由 CuriosCompat 按阶段动态显示
+        //（无 Curios 时用通用描述兜底，避免诅咒阶段剧透后续阶段效果）
+        boolean dynamicCore = level != null && level.isClientSide && CompatChecks.curiosLoaded()
+                && (stack.is(ModItems.DEITY.get()) || stack.is(ModItems.BEAST.get()));
+        if (!dynamicCore) {
+            tooltip.add(Component.translatable(stack.getDescriptionId() + ".desc")
+                    .withStyle(ChatFormatting.GRAY));
+        }
     }
 }

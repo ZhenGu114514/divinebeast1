@@ -75,6 +75,8 @@ public final class CuriosCompat {
         int progress = Math.min(5, CuriosEffects.momentProgress(player));
         if (CuriosEffects.isPhaseTwo(player)) {
             tooltip.add(wrap("item.divinebeast.deity.lore_phase2", ChatFormatting.GOLD));
+            tooltip.add(Component.translatable("divinebeast.stage.deity_redemption")
+                    .withStyle(ChatFormatting.GRAY));
             tooltip.add(Component.translatable("item.divinebeast.deity.progress", progress, 5)
                     .withStyle(ChatFormatting.GRAY));
             return;
@@ -123,11 +125,17 @@ public final class CuriosCompat {
             }
             case 2 -> {
                 tooltip.add(wrap("item.divinebeast.beast.lore_redemption", ChatFormatting.GOLD));
+                tooltip.add(Component.translatable("divinebeast.stage.beast_salvation")
+                        .withStyle(ChatFormatting.GRAY));
                 // 最下方：『自我』的文本仍存在
                 tooltip.add(Component.translatable("divinebeast.tooltip.beast_curse_4")
                         .withStyle(ChatFormatting.DARK_GRAY));
             }
-            case 3 -> tooltip.add(wrap("item.divinebeast.beast.lore_self", ChatFormatting.DARK_PURPLE));
+            case 3 -> {
+                tooltip.add(wrap("item.divinebeast.beast.lore_self", ChatFormatting.DARK_PURPLE));
+                tooltip.add(Component.translatable("divinebeast.stage.beast_self")
+                        .withStyle(ChatFormatting.GRAY));
+            }
             default -> {
                 // 未佩戴『兽』不展示阶段文本
             }
