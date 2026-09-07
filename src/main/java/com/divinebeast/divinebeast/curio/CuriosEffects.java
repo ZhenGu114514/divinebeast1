@@ -72,6 +72,8 @@ public final class CuriosEffects {
     private static final UUID MOB_HEALTH_100 = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000003");
     private static final UUID KNOCKBACK_RES = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000004");
     private static final UUID REDEEM_ATK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000005");
+    private static final UUID REDEEM_ATK_SPEED = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000006");
+    private static final UUID REDEEM_MOVE_SPEED = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000007");
     private static final String ADV_REDEMPTION_TAG = "divinebeast.adv.deity_redemption";
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
@@ -207,12 +209,14 @@ public final class CuriosEffects {
             return;
         }
 
-        // 救赎：免疫负面效果 + 击退抗性 1
+        // 救赎常驻：免疫负面效果 + 击退抗性 1 + 攻速×10 + 移速×2
         if (phaseTwo(player)) {
             ensureKnockbackResistance(player);
             clearHarmfulEffects(player);
+            ensureSpeedBuffs(player);
         } else {
             clearKnockbackResistance(player);
+            clearSpeedBuffs(player);
         }
 
         // 生命上限 2 / 护甲 0 / 工具耐久 1
@@ -303,6 +307,40 @@ public final class CuriosEffects {
         }
     }
 
+    /** 救赎常驻：攻击速度 ×10、移动速度 ×2 */
+    private static void ensureSpeedBuffs(Player player) {
+        scaleAttribute(player, Attributes.ATTACK_SPEED, REDEEM_ATK_SPEED, 10.0D);
+        scaleAttribute(player, Attributes.MOVEMENT_SPEED, REDEEM_MOVE_SPEED, 2.0D);
+    }
+
+    private static void clearSpeedBuffs(Player player) {
+        AttributeInstance atkSpeed = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (atkSpeed != null) {
+            atkSpeed.removeModifier(REDEEM_ATK_SPEED);
+        }
+        AttributeInstance moveSpeed = player.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (moveSpeed != null) {
+            moveSpeed.removeModifier(REDEEM_MOVE_SPEED);
+        }
+    }
+
+    /** 把属性当前值放大 multiplier 倍（固定 UUID，可反复校正） */
+    private static void scaleAttribute(Player player,
+                                       net.minecraft.world.entity.ai.attributes.Attribute attribute,
+                                       UUID uuid, double multiplier) {
+        AttributeInstance instance = player.getAttribute(attribute);
+        if (instance == null) {
+            return;
+        }
+        instance.removeModifier(uuid);
+        double natural = instance.getValue();
+        double delta = natural * (multiplier - 1.0D);
+        if (Math.abs(delta) > 0.001D) {
+            instance.addPermanentModifier(new AttributeModifier(uuid, "divinebeast_salvation_speed", delta,
+                    AttributeModifier.Operation.ADDITION));
+        }
+    }
+
     /** 救赎：清除身上残留的负面效果 */
     private static void clearHarmfulEffects(Player player) {
         for (MobEffectInstance effect : new java.util.ArrayList<>(player.getActiveEffects())) {
@@ -385,6 +423,19 @@ public final class CuriosEffects {
         return null;
     }
 
+    /** 解析伤害来源生物（近战实体 / 弹射物主人） */
+    private static LivingEntity sourceLiving(DamageSource source) {
+        Entity entity = source.getEntity();
+        if (entity instanceof LivingEntity living) {
+            return living;
+        }
+        if (source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.Projectile projectile
+                && projectile.getOwner() instanceof LivingEntity living) {
+            return living;
+        }
+        return null;
+    }
+
     private static void onLivingAttack(LivingAttackEvent event) {
         if (applyingTrueDamage || event.getEntity().level().isClientSide) {
             return;
@@ -409,22 +460,20 @@ public final class CuriosEffects {
         }
 
         if (phaseTwo(attacker)) {
-            // 救赎之击关闭时（C 键）：正常造成伤害
-            if (!CuriosEffectsState.respawnToggle(attacker)) {
-                return;
-            }
-            // 救赎阶段：不造成伤害
-            event.setCanceled(true);
             if (CuriosEffectsState.hasRedemptionMark(victim)) {
-                // 带印记：无视护甲与免伤的真伤（防递归处理）
+                // 常驻（不受 C 键影响）：对带救赎印记生物 → 无视护甲/免伤真伤
+                event.setCanceled(true);
                 applyingTrueDamage = true;
                 try {
                     victim.hurt(victim.damageSources().genericKill(), event.getAmount());
                 } finally {
                     applyingTrueDamage = false;
                 }
-            } else {
-                // 未带印记：治疗到满血
+                return;
+            }
+            // 未带印记：仅当「救赎之击」开启（C 键）时改为回满血；关闭则正常造成伤害
+            if (CuriosEffectsState.respawnToggle(attacker)) {
+                event.setCanceled(true);
                 victim.setHealth(victim.getMaxHealth());
             }
         }
@@ -438,6 +487,15 @@ public final class CuriosEffects {
             return;
         }
         DamageSource source = event.getSource();
+
+        // 救赎常驻：免疫带救赎印记生物对你造成的伤害
+        if (phaseTwo(player)) {
+            LivingEntity attacker = sourceLiving(source);
+            if (attacker != null && CuriosEffectsState.hasRedemptionMark(attacker)) {
+                event.setCanceled(true);
+                return;
+            }
+        }
 
         // 可能存在存在时刻：受到伤害随机传送
         if (curseActive(player, CURSE_TELEPORT)) {
