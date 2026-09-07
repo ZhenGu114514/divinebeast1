@@ -502,7 +502,8 @@ public final class BeastEffects {
         }
         LivingEntity victim = event.getEntity();
 
-        // ---------- 佩戴『兽』玩家作为受击方 ----------        if (victim instanceof Player victimPlayer && wearingBeast(victimPlayer)) {
+        // ---------- 佩戴『兽』玩家作为受击方 ----------
+        if (victim instanceof Player victimPlayer && wearingBeast(victimPlayer)) {
             if (curseActive(victimPlayer, 6) && !victimPlayer.isDeadOrDying()
                     && event.getAmount() >= victimPlayer.getHealth()) {
                 event.setCanceled(true); // 轮回诅咒：传送回出生点、损失 50% 当前生命
