@@ -1,0 +1,15 @@
+{
+  "display": {
+    "title": {"text": "自 · 我"},
+    "description": {"text": "七件全齐，成为自·我"},
+    "icon": {"item": "divinebeast:self"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_redemption",
+  "criteria": {
+    "impossible": {"trigger": "minecraft:impossible"}
+  },
+  "rewards": {}
+}

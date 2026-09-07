@@ -2,6 +2,7 @@ package com.divinebeast.divinebeast.curio;
 
 import com.divinebeast.divinebeast.item.ModItems;
 import com.divinebeast.divinebeast.net.CuriosEffectsState;
+import com.divinebeast.divinebeast.reward.ProgressGrants;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -71,6 +72,7 @@ public final class CuriosEffects {
     private static final UUID MOB_HEALTH_100 = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000003");
     private static final UUID KNOCKBACK_RES = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000004");
     private static final UUID REDEEM_ATK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000005");
+    private static final String ADV_REDEMPTION_TAG = "divinebeast.adv.deity_redemption";
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
     private static final int CURSE_LIFE_LOCK = 0;   // 不存在不存在时刻
@@ -187,6 +189,12 @@ public final class CuriosEffects {
         }
 
         // 经验恒定为零
+        // 成就：进入祂·救赎
+        if (phaseTwo(player) && player instanceof ServerPlayer serverPlayer
+                && !player.getPersistentData().getBoolean(ADV_REDEMPTION_TAG)) {
+            player.getPersistentData().putBoolean(ADV_REDEMPTION_TAG, true);
+            ProgressGrants.grant(serverPlayer, "deity_redemption");
+        }
         if (curseActive(player, CURSE_LIFE_LOCK)) {
             if (player.totalExperience != 0 || player.experienceLevel != 0 || player.experienceProgress != 0.0F) {
                 player.totalExperience = 0;

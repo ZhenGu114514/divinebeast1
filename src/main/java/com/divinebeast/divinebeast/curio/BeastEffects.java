@@ -1,8 +1,11 @@
 package com.divinebeast.divinebeast.curio;
 
 import com.divinebeast.divinebeast.item.ModItems;
+import com.divinebeast.divinebeast.reward.ProgressGrants;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
@@ -57,6 +60,9 @@ public final class BeastEffects {
     private static final String TAG_SAMSARA_LAYERS = "divinebeast.samsara_layers"; // 轮回 层数
     private static final String TAG_SAMSARA_LAST = "divinebeast.samsara_last";     // 轮回 上次获得时刻
     private static final String TAG_M5_REVIVE = "divinebeast.m5_last_revive";      // 时刻5 复活冷却(可被轮回刷新)
+    private static final String ADV_BEAST_REDEMPTION = "divinebeast.adv.beast_redemption";
+    private static final String ADV_BEAST_SELF = "divinebeast.adv.beast_self";
+    private static final String SELF_DISPLAY = "『自·我』";
 
     // 顺序：supreme wisdom life chaos self devour samsara
     private static final String[] LAW_SLOTS = {
@@ -183,6 +189,20 @@ public final class BeastEffects {
             return;
         }
         int stage = stageOf(player);
+
+        // 成就：兽·拯救 / 自·我；以及「自·我」仅在饰品栏中改名
+        if (player instanceof ServerPlayer serverPlayer) {
+            CompoundTag ptag = player.getPersistentData();
+            if (stage == 2 && !ptag.getBoolean(ADV_BEAST_REDEMPTION)) {
+                ptag.putBoolean(ADV_BEAST_REDEMPTION, true);
+                ProgressGrants.grant(serverPlayer, "beast_redemption");
+            }
+            if (stage == 3 && !ptag.getBoolean(ADV_BEAST_SELF)) {
+                ptag.putBoolean(ADV_BEAST_SELF, true);
+                ProgressGrants.grant(serverPlayer, "beast_self");
+            }
+        }
+        renameBeastWhileSelf(player, stage);
 
         // ---------- 诅咒持续项 ----------
         if (stage == 1) {
@@ -857,5 +877,27 @@ public final class BeastEffects {
     /** 供客户端 tooltip：某条法则是否已佩戴（其诅咒已解除） */
     public static boolean lawEquipped(LivingEntity entity, int index) {
         return index >= 0 && index < LAW_SLOTS.length && lawWorn(entity, index);
+    }
+
+    /** 自·我阶段：仅在饰品栏中的『兽』显示名称改为 『自·我』；离开该阶段恢复原名称 */
+    private static void renameBeastWhileSelf(Player player, int stage) {
+        Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
+        if (optional.isEmpty()) {
+            return;
+        }
+        for (SlotResult result : optional.get().findCurios(BEAST_SLOT)) {
+            ItemStack stack = result.stack();
+            if (!stack.is(ModItems.BEAST.get())) {
+                continue;
+            }
+            if (stage == 3) {
+                if (!SELF_DISPLAY.equals(stack.getHoverName().getString())) {
+                    stack.setHoverName(Component.literal(SELF_DISPLAY).withStyle(ChatFormatting.GOLD));
+                }
+            } else if (SELF_DISPLAY.equals(stack.getHoverName().getString())) {
+                stack.resetHoverName();
+            }
+            break;
+        }
     }
 }

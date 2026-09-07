@@ -1,0 +1,15 @@
+{
+  "display": {
+    "title": {"text": "兽 · 拯救"},
+    "description": {"text": "六件法则齐，进入拯救"},
+    "icon": {"item": "divinebeast:beast"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_first",
+  "criteria": {
+    "impossible": {"trigger": "minecraft:impossible"}
+  },
+  "rewards": {}
+}

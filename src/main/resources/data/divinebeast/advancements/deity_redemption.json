@@ -1,0 +1,15 @@
+{
+  "display": {
+    "title": {"text": "祂 · 救赎"},
+    "description": {"text": "集齐五件时刻，进入救赎"},
+    "icon": {"item": "divinebeast:deity"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:divine_first",
+  "criteria": {
+    "impossible": {"trigger": "minecraft:impossible"}
+  },
+  "rewards": {}
+}

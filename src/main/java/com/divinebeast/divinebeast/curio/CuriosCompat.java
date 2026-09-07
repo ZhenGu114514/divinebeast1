@@ -60,8 +60,8 @@ public final class CuriosCompat {
 
     /**
      * 『祂』物品的动态提示（仅客户端调用）：
-     * 未集齐 → 诅咒形态正文 + 5 行"时刻"诅咒（已佩戴同名时刻 → 变灰，诅咒失效）；
-     * 集齐 → 救赎形态文本。
+     * 未集齐 → 诅咒形态正文 + 仍生效的时刻诅咒行（已佩戴的诅咒行直接消失）；
+     * 集齐 → 救赎形态文本（加『』彩色）。
      */
     public static void appendDeityTooltip(ItemStack stack, List<Component> tooltip) {
         if (!stack.is(ModItems.DEITY.get())) {
@@ -74,20 +74,19 @@ public final class CuriosCompat {
         Player player = minecraft.player;
         int progress = Math.min(5, CuriosEffects.momentProgress(player));
         if (CuriosEffects.isPhaseTwo(player)) {
-            // 救赎形态
-            tooltip.add(Component.translatable("item.divinebeast.deity.lore_phase2")
-                    .withStyle(ChatFormatting.GOLD));
+            tooltip.add(wrap("item.divinebeast.deity.lore_phase2", ChatFormatting.GOLD));
             tooltip.add(Component.translatable("item.divinebeast.deity.progress", progress, 5)
                     .withStyle(ChatFormatting.GRAY));
             return;
         }
-        // 诅咒形态：正文 + 每件时刻的诅咒行；已佩戴 → 灰色（该诅咒失效）
         tooltip.add(Component.translatable("item.divinebeast.deity.lore_phase1")
                 .withStyle(ChatFormatting.DARK_RED));
         for (int i = 0; i < 5; i++) {
-            boolean disabled = CuriosEffects.momentWorn(player, i);
-            tooltip.add(Component.translatable("divinebeast.tooltip.deity_curse_" + i)
-                    .withStyle(disabled ? ChatFormatting.GRAY : ChatFormatting.RED));
+            // 已佩戴同名时刻 → 该诅咒行直接消失（不再置灰）
+            if (!CuriosEffects.momentWorn(player, i)) {
+                tooltip.add(Component.translatable("divinebeast.tooltip.deity_curse_" + i)
+                        .withStyle(ChatFormatting.RED));
+            }
         }
         tooltip.add(Component.translatable("item.divinebeast.deity.progress", progress, 5)
                 .withStyle(ChatFormatting.GRAY));
@@ -95,9 +94,9 @@ public final class CuriosCompat {
 
     /**
      * 『兽』物品的动态提示（仅客户端调用）：
-     * 诅咒 → 诅咒正文 + 7 行法则诅咒（已佩戴 → 变灰）；
-     * 拯救 → 救赎正文，且最下方仍保留『自我』诅咒文本（灰）；
-     * 自·我 → 仅显示自·我正文（不再有自我文本）。
+     * 诅咒 → 仍生效的法则诅咒行（已佩戴的行直接消失）；
+     * 拯救 → 救赎正文（『』彩色），最下方仍保留『自我』诅咒文本；
+     * 自·我 → 『』彩色正文（名称另由佩戴改名实现）。
      */
     public static void appendBeastTooltip(ItemStack stack, List<Component> tooltip) {
         if (!stack.is(ModItems.BEAST.get())) {
@@ -115,20 +114,20 @@ public final class CuriosCompat {
                 tooltip.add(Component.translatable("item.divinebeast.beast.lore_curse")
                         .withStyle(ChatFormatting.RED));
                 for (int i = 0; i < 7; i++) {
-                    boolean disabled = BeastEffects.lawEquipped(player, i);
-                    tooltip.add(Component.translatable("divinebeast.tooltip.beast_curse_" + i)
-                            .withStyle(disabled ? ChatFormatting.GRAY : ChatFormatting.RED));
+                    // 已佩戴同名法则 → 该诅咒行直接消失（不再置灰）
+                    if (!BeastEffects.lawEquipped(player, i)) {
+                        tooltip.add(Component.translatable("divinebeast.tooltip.beast_curse_" + i)
+                                .withStyle(ChatFormatting.RED));
+                    }
                 }
             }
             case 2 -> {
-                tooltip.add(Component.translatable("item.divinebeast.beast.lore_redemption")
-                        .withStyle(ChatFormatting.GOLD));
-                // 最下方：『自我』的文本仍存在（灰）
+                tooltip.add(wrap("item.divinebeast.beast.lore_redemption", ChatFormatting.GOLD));
+                // 最下方：『自我』的文本仍存在
                 tooltip.add(Component.translatable("divinebeast.tooltip.beast_curse_4")
-                        .withStyle(ChatFormatting.GRAY));
+                        .withStyle(ChatFormatting.DARK_GRAY));
             }
-            case 3 -> tooltip.add(Component.translatable("item.divinebeast.beast.lore_self")
-                    .withStyle(ChatFormatting.DARK_PURPLE));
+            case 3 -> tooltip.add(wrap("item.divinebeast.beast.lore_self", ChatFormatting.DARK_PURPLE));
             default -> {
                 // 未佩戴『兽』不展示阶段文本
             }
@@ -137,6 +136,13 @@ public final class CuriosCompat {
             tooltip.add(Component.translatable("item.divinebeast.beast.progress", progress, 7)
                     .withStyle(ChatFormatting.GRAY));
         }
+    }
+
+    /** 用 『』 包裹翻译文本并上色 */
+    private static Component wrap(String key, ChatFormatting color) {
+        return Component.literal("『").withStyle(color)
+                .append(Component.translatable(key).withStyle(color))
+                .append(Component.literal("』").withStyle(color));
     }
 
     private static void onAttachCapabilities(AttachCapabilitiesEvent<ItemStack> event) {
