@@ -52,9 +52,9 @@ public final class CuriosCompat {
     private CuriosCompat() {
     }
 
-    /** 仅当 Curios 已安装时被调用。注册 ItemStack 能力附加事件。 */
+    /** 仅当 Curios 已安装时被调用。注册 ItemStack 能力附加事件（泛型事件须用 addGenericListener）。 */
     public static void register() {
-        MinecraftForge.EVENT_BUS.addListener(CuriosCompat::onAttachCapabilities);
+        MinecraftForge.EVENT_BUS.addGenericListener(ItemStack.class, CuriosCompat::onAttachCapabilities);
         LOGGER.info("[divinebeast] Curios 联动已启用：佩戴『祂』『兽』将按佩戴状态动态解锁/收回槽位。");
     }
 
