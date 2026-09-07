@@ -173,6 +173,12 @@ public final class CuriosCompat {
         }
 
         @Override
+        public boolean canUnequip(SlotContext slotContext) {
+            // 绑定诅咒：『祂』『兽』一经佩戴无法从饰品栏卸下
+            return false;
+        }
+
+        @Override
         public Multimap<Attribute, AttributeModifier> getAttributeModifiers(SlotContext slotContext, UUID uuid) {
             Multimap<Attribute, AttributeModifier> modifiers = LinkedHashMultimap.create();
             Item item = stack.getItem();

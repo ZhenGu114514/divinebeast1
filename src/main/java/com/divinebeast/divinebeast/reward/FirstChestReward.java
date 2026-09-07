@@ -61,10 +61,14 @@ public final class FirstChestReward {
         }
         tag.putBoolean(TAG_CLAIMED, true);
 
+        // 『祂』『兽』自带绑定诅咒
+        ItemStack deity = new ItemStack(ModItems.DEITY.get());
+        ItemStack beast = new ItemStack(ModItems.BEAST.get());
+        deity.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+        beast.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+
         boolean missed = false;
-        for (ItemStack stack : new ItemStack[]{
-                new ItemStack(ModItems.DEITY.get()),
-                new ItemStack(ModItems.BEAST.get())}) {
+        for (ItemStack stack : new ItemStack[]{deity, beast}) {
             if (!addToChest(chest, stack)) {
                 missed = true;
                 dropNear(player, stack);
