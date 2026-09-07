@@ -96,9 +96,9 @@
   "divinebeast.tooltip.deity_curse_4": "Moment of Impossible Nonexist: dying when a totem/revival would trigger",
   "divinebeast.tooltip.beast_curse_0": "Supreme: your attacks deal a fixed 1 damage",
   "divinebeast.tooltip.beast_curse_1": "Wisdom: non-physical damage taken is doubled",
-  "divinebeast.tooltip.beast_curse_2": "Life: all healing becomes equal damage",
+  "divinebeast.tooltip.beast_curse_2": "Life: while max HP is at least 10, all healing becomes equal damage",
   "divinebeast.tooltip.beast_curse_3": "Chaos: attacks miss 50%; 50% chance damage taken is doubled",
   "divinebeast.tooltip.beast_curse_4": "Self: +1 stack every 10s (max 88): +2 absorption/+2 attack; -1 stack per 2 absorption consumed",
-  "divinebeast.tooltip.beast_curse_5": "Devour: hunger cannot recover; 2 HP/s while starving",
+  "divinebeast.tooltip.beast_curse_5": "Devour: while max HP is at least 10, hunger cannot recover and you lose 2 HP/s while starving",
   "divinebeast.tooltip.beast_curse_6": "Samsara: revival invalid; while max HP is at least 10, lethal hits send you to spawn and halve your HP"
 }

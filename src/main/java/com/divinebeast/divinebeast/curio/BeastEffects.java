@@ -207,7 +207,8 @@ public final class BeastEffects {
 
         // ---------- 诅咒持续项 ----------
         if (stage == 1) {
-            if (curseActive(player, 5)) { // 吞噬诅咒
+            // 吞噬诅咒：生命上限 ≥10 时才触发
+            if (curseActive(player, 5) && player.getMaxHealth() >= 10.0F) {
                 if (!FOOD_CAP.containsKey(player.getUUID())) {
                     FOOD_CAP.put(player.getUUID(), player.getFoodData().getFoodLevel());
                 }
@@ -504,10 +505,10 @@ public final class BeastEffects {
         if (!(event.getEntity() instanceof Player player) || !wearingBeast(player)) {
             return;
         }
-        if (curseActive(player, 2)) {
+        if (curseActive(player, 2) && player.getMaxHealth() >= 10.0F) {
             float amount = event.getAmount();
             event.setCanceled(true);
-            player.hurt(player.damageSources().magic(), amount); // 生命诅咒：治疗反噬
+            player.hurt(player.damageSources().magic(), amount); // 生命诅咒（生命上限≥10 时）：治疗反噬
         } else if (lawWorn(player, 2)) {
             event.setAmount(event.getAmount() * 2.0F); // 生命（法则）：任何来源恢复翻倍
         }
