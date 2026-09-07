@@ -826,12 +826,8 @@ public final class BeastEffects {
         return null;
     }
 
+    /** 非物理伤害近似：没有直接攻击实体（火焰/岩浆/溺水/坠落/魔法等），或来源非近战接触 */
     private static boolean isNonPhysical(DamageSource source) {
-        if (source.type().is(net.minecraft.tags.DamageTypeTags.IS_FIRE)
-                || source.type().is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)
-                || source.type().is(net.minecraft.tags.DamageTypeTags.IS_PROJECTILE)) {
-            return true;
-        }
         return source.getDirectEntity() == null;
     }
 
