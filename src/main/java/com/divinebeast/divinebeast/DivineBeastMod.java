@@ -37,7 +37,7 @@ public class DivineBeastMod {
         ModItems.register(modBus);
         Networking.register();
         // C 键（救赎重生开关）键位仅在客户端注册
-        DistExecutor.unsafeRunWhenOn(net.minecraftforge.fml.Dist.CLIENT,
+        DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> ClientKeybinds.init(modBus));
 
         if (CompatChecks.curiosLoaded()) {

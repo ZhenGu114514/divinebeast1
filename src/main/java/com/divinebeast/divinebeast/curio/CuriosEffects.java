@@ -109,14 +109,14 @@ public final class CuriosEffects {
     }
 
     private static boolean hasInSlot(LivingEntity entity, String slotId, net.minecraft.world.item.Item item) {
-        java.util.Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(entity);
-        if (optional.isEmpty()) {
-            return false;
-        }
-        // findCurios(identifier) 返回该槽位当前已装备的物品结果
-        for (top.theillusivec4.curios.api.SlotResult result : optional.get().findCurios(slotId)) {
-            if (!result.getStack().isEmpty() && result.getStack().is(item)) {
-                return true;
+        java.util.Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(entity).resolve();
+        if (optional.isPresent()) {
+            // findCurios(identifier) 返回该槽位当前已装备的物品结果
+            for (top.theillusivec4.curios.api.SlotResult result : optional.get().findCurios(slotId)) {
+                net.minecraft.world.item.ItemStack stack = result.stack();
+                if (!stack.isEmpty() && stack.is(item)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -308,9 +308,7 @@ public final class CuriosEffects {
         if (applyingTrueDamage || event.getEntity().level().isClientSide) {
             return;
         }
-        if (!(event.getEntity() instanceof LivingEntity victim)) {
-            return;
-        }
+        LivingEntity victim = event.getEntity();
         Player attacker = attackingPlayer(event.getSource());
         if (attacker == null || victim.is(attacker)) {
             return;

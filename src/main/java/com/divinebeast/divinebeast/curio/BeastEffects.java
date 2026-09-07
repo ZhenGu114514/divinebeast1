@@ -17,6 +17,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -118,13 +119,13 @@ public final class BeastEffects {
     // ==================================================================
 
     private static boolean worn(LivingEntity entity, String slotId, Item item) {
-        Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(entity);
-        if (optional.isEmpty()) {
-            return false;
-        }
-        for (SlotResult result : optional.get().findCurios(slotId)) {
-            if (!result.getStack().isEmpty() && result.getStack().is(item)) {
-                return true;
+        Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(entity).resolve();
+        if (optional.isPresent()) {
+            for (SlotResult result : optional.get().findCurios(slotId)) {
+                ItemStack stack = result.stack();
+                if (!stack.isEmpty() && stack.is(item)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -296,17 +297,17 @@ public final class BeastEffects {
 
         Long lastDealt = LAST_DEALT_TICK.get(player.getUUID());
         if (lastDealt != null && now - lastDealt <= BUFF_GRACE_TICKS) {
-            player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, BUFF_GRACE_TICKS, 5));
+            player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, BUFF_GRACE_TICKS, 5));
             player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, BUFF_GRACE_TICKS, 4));
         } else if (lastDealt != null) {
             LAST_DEALT_TICK.remove(player.getUUID());
-            player.removeEffect(MobEffects.STRENGTH);
+            player.removeEffect(MobEffects.DAMAGE_BOOST);
             player.removeEffect(MobEffects.ABSORPTION);
         }
     }
 
     private static void applyMultiplier(Player player,
-                                        net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute,
+                                        net.minecraft.world.entity.ai.attributes.Attribute attribute,
                                         UUID uuid, double bonusMultiplier) {
         AttributeInstance instance = player.getAttribute(attribute);
         if (instance == null) {
@@ -408,9 +409,7 @@ public final class BeastEffects {
         if (event.getEntity().level().isClientSide || applyingSplash) {
             return;
         }
-        if (!(event.getEntity() instanceof LivingEntity victim)) {
-            return;
-        }
+        LivingEntity victim = event.getEntity();
         Player attacker = attackingPlayer(event.getSource());
         if (attacker == null || victim.is(attacker) || !wearingBeast(attacker)) {
             return;
@@ -501,12 +500,9 @@ public final class BeastEffects {
         if (event.getEntity().level().isClientSide || applyingTrueDamage || applyingSplash) {
             return;
         }
-        if (!(event.getEntity() instanceof LivingEntity victim)) {
-            return;
-        }
+        LivingEntity victim = event.getEntity();
 
-        // ---------- 佩戴『兽』玩家作为受击方 ----------
-        if (victim instanceof Player victimPlayer && wearingBeast(victimPlayer)) {
+        // ---------- 佩戴『兽』玩家作为受击方 ----------        if (victim instanceof Player victimPlayer && wearingBeast(victimPlayer)) {
             if (curseActive(victimPlayer, 6) && !victimPlayer.isDeadOrDying()
                     && event.getAmount() >= victimPlayer.getHealth()) {
                 event.setCanceled(true); // 轮回诅咒：传送回出生点、损失 50% 当前生命
@@ -639,9 +635,7 @@ public final class BeastEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (!(event.getEntity() instanceof LivingEntity dead)) {
-            return;
-        }
+        LivingEntity dead = event.getEntity();
 
         // ---------- 佩戴『兽』者自身死亡 ----------
         if (dead instanceof ServerPlayer serverPlayer && wearingBeast(serverPlayer)) {
@@ -688,7 +682,7 @@ public final class BeastEffects {
             float heal = last == null ? 4.0F : last;
             killer.heal(heal); // 拯救击杀：全额回血 + 力量V/吸收IV 5 秒
             killer.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 100, 3));
-            killer.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 100, 4));
+            killer.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 100, 4));
         }
     }
 
@@ -709,8 +703,8 @@ public final class BeastEffects {
         }
         GameRules.BooleanValue keep = serverLevel.getGameRules().getRule(GameRules.RULE_KEEPINVENTORY);
         if (!keep.get()) {
-            keep.set(true, serverLevel);
-            serverLevel.getServer().execute(() -> keep.set(false, serverLevel));
+            keep.set(true, serverLevel.getServer());
+            serverLevel.getServer().execute(() -> keep.set(false, serverLevel.getServer()));
         }
     }
 
@@ -832,7 +826,9 @@ public final class BeastEffects {
     }
 
     private static boolean isNonPhysical(DamageSource source) {
-        if (source.isMagic() || source.isFire() || source.isExplosion() || source.isProjectile()) {
+        if (source.type().is(net.minecraft.tags.DamageTypeTags.IS_FIRE)
+                || source.type().is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)
+                || source.type().is(net.minecraft.tags.DamageTypeTags.IS_PROJECTILE)) {
             return true;
         }
         return source.getDirectEntity() == null;

@@ -111,13 +111,13 @@ public final class MomentEffects {
     // ==================================================================
 
     private static boolean isWorn(LivingEntity entity, String slotId, Item item) {
-        Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(entity);
-        if (optional.isEmpty()) {
-            return false;
-        }
-        for (SlotResult result : optional.get().findCurios(slotId)) {
-            if (!result.getStack().isEmpty() && result.getStack().is(item)) {
-                return true;
+        Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(entity).resolve();
+        if (optional.isPresent()) {
+            for (SlotResult result : optional.get().findCurios(slotId)) {
+                ItemStack stack = result.stack();
+                if (!stack.isEmpty() && stack.is(item)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -261,9 +261,7 @@ public final class MomentEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (!(event.getEntity() instanceof LivingEntity victim)) {
-            return;
-        }
+        LivingEntity victim = event.getEntity();
         Player attacker = attackingPlayer(event.getSource());
         if (attacker == null || victim.is(attacker)) {
             return;
@@ -385,10 +383,10 @@ public final class MomentEffects {
                 return stack;
             }
         }
-        Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player);
+        Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isPresent()) {
             for (SlotResult result : optional.get().findCurios(ModItems.EXIST_EXIST.get())) {
-                return result.getStack();
+                return result.stack();
             }
         }
         return ItemStack.EMPTY;
@@ -474,7 +472,7 @@ public final class MomentEffects {
         }
         if (player.isShiftKeyDown() && isPotion(held)) {
             ItemStack container = findExistExistContainer(player);
-            if (!container.isEmpty() && !container.is(held)) {
+            if (!container.isEmpty()) {
                 storePotion(player, held, container);
                 event.setCanceled(true);
             }

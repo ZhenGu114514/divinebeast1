@@ -1,6 +1,6 @@
 package com.divinebeast.divinebeast;
 
-import net.minecraftforge.fml.loading.moddiscovery.ModList;
+import net.minecraftforge.fml.ModList;
 
 /**
  * 可选前置检查工具。
