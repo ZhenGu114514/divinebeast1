@@ -100,5 +100,5 @@
   "divinebeast.tooltip.beast_curse_3": "Chaos: attacks miss 50%; 50% chance damage taken is doubled",
   "divinebeast.tooltip.beast_curse_4": "Self: +1 stack every 10s (max 88): +2 absorption/+2 attack; -1 stack per 2 absorption consumed",
   "divinebeast.tooltip.beast_curse_5": "Devour: hunger cannot recover; 2 HP/s while starving",
-  "divinebeast.tooltip.beast_curse_6": "Samsara: revival invalid; lethal hits send you to spawn and halve your HP"
+  "divinebeast.tooltip.beast_curse_6": "Samsara: revival invalid; while max HP is at least 10, lethal hits send you to spawn and halve your HP"
 }

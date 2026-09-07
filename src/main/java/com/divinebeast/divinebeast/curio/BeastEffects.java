@@ -525,9 +525,10 @@ public final class BeastEffects {
 
         // ---------- 佩戴『兽』玩家作为受击方 ----------
         if (victim instanceof Player victimPlayer && wearingBeast(victimPlayer)) {
-            if (curseActive(victimPlayer, 6) && !victimPlayer.isDeadOrDying()
+            if (curseActive(victimPlayer, 6) && victimPlayer.getMaxHealth() >= 10.0F
+                    && !victimPlayer.isDeadOrDying()
                     && event.getAmount() >= victimPlayer.getHealth()) {
-                event.setCanceled(true); // 轮回诅咒：传送回出生点、损失 50% 当前生命
+                event.setCanceled(true); // 轮回诅咒（生命上限≥10 时触发）：传送回出生点、损失 50% 当前生命
                 sendToSpawn(victimPlayer);
                 victimPlayer.setHealth(Math.max(1.0F, victimPlayer.getHealth() * 0.5F));
                 return;

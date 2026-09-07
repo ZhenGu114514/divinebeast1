@@ -101,5 +101,5 @@
   "divinebeast.tooltip.beast_curse_3": "混沌：攻击 50% 落空；受击 50% 概率伤害翻倍",
   "divinebeast.tooltip.beast_curse_4": "自我：每 10 秒 +1 层（上限 88）：+2 吸收/+2 攻击，每扣 2 点吸收减 1 层",
   "divinebeast.tooltip.beast_curse_5": "吞噬：饱食无法恢复，饥饿时每秒扣 2 点生命",
-  "divinebeast.tooltip.beast_curse_6": "轮回：图腾/复活无效；致命伤传送回出生点并损失 50% 当前生命"
+  "divinebeast.tooltip.beast_curse_6": "轮回：图腾/复活无效；生命上限≥10 时，致命伤改为传送回出生点并损失 50% 当前生命"
 }
