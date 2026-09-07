@@ -1,6 +1,6 @@
 package com.divinebeast.divinebeast.reward;
 
-import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -15,14 +15,14 @@ public final class ProgressGrants {
     }
 
     public static void grant(ServerPlayer player, String id) {
-        AdvancementHolder holder = player.server.getAdvancements()
-                .get(ResourceLocation.fromNamespaceAndPath(MOD_ID, id));
-        if (holder == null) {
+        Advancement advancement = player.server.getAdvancements()
+                .getAdvancement(new ResourceLocation(MOD_ID, id));
+        if (advancement == null) {
             return;
         }
         var progress = player.getAdvancements();
-        if (!progress.getOrStartProgress(holder).isDone()) {
-            progress.award(holder, "impossible");
+        if (!progress.getOrStartProgress(advancement).isDone()) {
+            progress.award(advancement, "impossible");
         }
     }
 }
