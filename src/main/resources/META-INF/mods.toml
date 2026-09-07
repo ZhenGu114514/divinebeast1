@@ -4,7 +4,7 @@ license = "All rights reserved"
 
 [[mods]]
 modId = "divinebeast"
-version = "1.4.1"
+version = "1.4.2"
 displayName = "Divine & Beast"
 authors = "divinebeast"
 description = """
@@ -19,9 +19,5 @@ description = """
 - Curios 为可选前置：未安装时物品照常存在，只是没有槽位联动与效果
 """
 
-# ============ 可选前置声明：Curios ============
-[[dependencies.divinebeast]]
-modId = "curios"
-mandatory = false
-ordering = "NONE"
-side = "BOTH"
+# 说明：Curios 为可选前置，运行时通过代码检测（CompatChecks），
+# 不在此处声明 dependencies，以免空版本范围导致 Forge 拒绝加载。
