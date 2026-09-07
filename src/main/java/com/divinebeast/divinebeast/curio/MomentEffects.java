@@ -70,8 +70,8 @@ public final class MomentEffects {
     private static final String TAG_LAST_REVIVE = "divinebeast.m5_last_revive";
 
     // 属性水位补偿用固定 UUID
-    private static final UUID COMP_MAX_HEALTH = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-moment0000001");
-    private static final UUID COMP_ARMOR = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-moment0000002");
+    private static final UUID COMP_MAX_HEALTH = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000001001");
+    private static final UUID COMP_ARMOR = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000001002");
 
     private static final int NO_HEAL_TICKS = 60;          // 禁疗 3 秒
     private static final double NEGATE_CHANCE = 0.9D;      // 90% 免伤

@@ -62,9 +62,9 @@ public final class CuriosEffects {
     };
 
     // 固定修饰符 UUID（属性锁使用）
-    private static final UUID MAX_HEALTH_LOCK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-deity00000001");
-    private static final UUID ARMOR_LOCK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-deity00000002");
-    private static final UUID MOB_HEALTH_100 = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-deity00000003");
+    private static final UUID MAX_HEALTH_LOCK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000001");
+    private static final UUID ARMOR_LOCK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000002");
+    private static final UUID MOB_HEALTH_100 = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000003");
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
     private static final int CURSE_LIFE_LOCK = 0;   // 不存在不存在时刻

@@ -77,11 +77,11 @@ public final class BeastEffects {
     private static final int SUPREME_STACK_MAX = 10;     // 至高层数上限
     private static final int SELF_LAW_STACK_MAX = 888;   // 自我(法则)层数上限
 
-    private static final UUID ATTACK_BONUS_SELF_CURSE = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-beast00000002");
-    private static final UUID SELF_HEALTH_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-beast00000003");
-    private static final UUID SELF_ATTACK_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-beast00000004");
-    private static final UUID ARMOR_ZERO_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-beast00000005");
-    private static final UUID SELF_LAW_ATTACK_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-beast00000006");
+    private static final UUID ATTACK_BONUS_SELF_CURSE = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000002002");
+    private static final UUID SELF_HEALTH_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000002003");
+    private static final UUID SELF_ATTACK_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000002004");
+    private static final UUID ARMOR_ZERO_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000002005");
+    private static final UUID SELF_LAW_ATTACK_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000002006");
 
     private static final java.util.Map<Integer, Long> STUNNED_UNTIL = new java.util.HashMap<>();
     private static final java.util.Set<Integer> ARMLESS = new java.util.HashSet<>();
