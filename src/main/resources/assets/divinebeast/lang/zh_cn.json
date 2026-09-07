@@ -78,7 +78,7 @@
   "item.divinebeast.maybe_exist.desc": "佩戴：受到伤害时 90% 概率完全不受此伤害。",
   "item.divinebeast.exist_exist.desc": "佩戴：正面药水效果每秒 +2 秒持续时间；每秒回复 (10+正面效果数)% 已损失生命（至少 1 点）；可存取药水（潜行+手持药水右键=存入，手持本物品右键=清空），佩戴时自动施加存储药水并维持。",
   "item.divinebeast.impossible_nonexist.desc": "佩戴：死亡时复活并获得 20 秒无敌；冷却 180 − 经验等级 秒。",
-  "item.divinebeast.supreme.desc": "佩戴：攻击不再造成普通伤害，而是直接扣除目标等量生命（真伤）；每次造成伤害 +1 层增伤（每层 +10%，上限 10 层，10 秒未命中清零）。",
+  "item.divinebeast.supreme.desc": "佩戴：攻击造成正常伤害，并额外造成一段相同数值的真实伤害（无视护甲/免伤）；每次造成伤害 +1 层增伤（每层 +10%，上限 10 层，10 秒未命中清零）。",
   "item.divinebeast.wisdom.desc": "佩戴：受到的所有伤害减半，并有 90% 概率完全无效本次伤害。",
   "item.divinebeast.life.desc": "佩戴：任何来源的恢复效果翻倍；受到伤害时回复该伤害一半的生命值。",
   "item.divinebeast.chaos.desc": "佩戴：攻击 90% 概率伤害翻倍；9% 造成敌方最大生命 50% 伤害；1% 造成 99%（后两者无视护甲）。",

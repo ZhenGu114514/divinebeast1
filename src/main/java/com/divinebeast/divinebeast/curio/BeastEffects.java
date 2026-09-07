@@ -587,7 +587,9 @@ public final class BeastEffects {
         }
 
         float finalAmount = Math.max(0.0F, amount);
-        boolean trueHit = lawSupreme || chaosPercentTrue || curseSupreme;
+        // 至高（佩戴/诅咒）均按普通伤害结算（含每层 +10% 增伤），对末影龙等 BOSS 正常生效；
+        // 仅混沌 9%/1% 概率伤害走无视护甲的真伤
+        boolean trueHit = chaosPercentTrue;
 
         // 叠加层 / 记录
         if (lawSupreme && finalAmount > 0.0F) {
@@ -613,6 +615,16 @@ public final class BeastEffects {
             }
         } else {
             event.setAmount(finalAmount);
+        }
+
+        // 至高：正常伤害之外，额外造成一段等额的真实伤害（无视护甲/免伤）
+        if (lawSupreme && !chaosPercentTrue && !curseSupreme && finalAmount > 0.0F) {
+            applyingTrueDamage = true;
+            try {
+                victim.hurt(victim.damageSources().genericKill(), finalAmount);
+            } finally {
+                applyingTrueDamage = false;
+            }
         }
 
         // 吸血：自·我 100% / 拯救 25%
