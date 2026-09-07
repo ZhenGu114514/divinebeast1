@@ -270,7 +270,7 @@ public final class CuriosEffects {
             return;
         }
         if (event.getEntity() instanceof Player player && phaseTwo(player)
-                && event.getEffect() != null && !event.getEffect().getEffect().isBeneficial()) {
+                && event.getEffectInstance() != null && !event.getEffectInstance().getEffect().isBeneficial()) {
             event.setCanceled(true);
         }
     }
