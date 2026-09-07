@@ -1,0 +1,21 @@
+{
+  "entities": [
+    "minecraft:player"
+  ],
+  "slots": [
+    "divine",
+    "beast",
+    "nonexist_nonexist",
+    "nonexist_exist",
+    "maybe_exist",
+    "exist_exist",
+    "impossible_nonexist",
+    "supreme",
+    "wisdom",
+    "life",
+    "chaos",
+    "self",
+    "devour",
+    "samsara"
+  ]
+}

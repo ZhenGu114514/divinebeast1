@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+# 本地运行目录
+run/
+logs/
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

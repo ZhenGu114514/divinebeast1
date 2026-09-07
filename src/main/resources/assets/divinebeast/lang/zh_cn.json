@@ -1,0 +1,64 @@
+{
+  "itemGroup.divinebeast": "祂 · 兽",
+
+  "item.divinebeast.deity": "祂",
+  "item.divinebeast.beast": "兽",
+
+  "item.divinebeast.nonexist_nonexist": "不存在不存在时刻",
+  "item.divinebeast.nonexist_exist": "不存在存在时刻",
+  "item.divinebeast.maybe_exist": "可能存在存在时刻",
+  "item.divinebeast.exist_exist": "已存在存在时刻",
+  "item.divinebeast.impossible_nonexist": "不可能存在不可能存在时刻",
+
+  "item.divinebeast.supreme": "至高",
+  "item.divinebeast.wisdom": "智慧",
+  "item.divinebeast.life": "生命",
+  "item.divinebeast.chaos": "混沌",
+  "item.divinebeast.self": "自我",
+  "item.divinebeast.devour": "吞噬",
+  "item.divinebeast.samsara": "轮回",
+
+  "curios.identifier.divine": "祂",
+  "curios.identifier.beast": "兽",
+
+  "curios.identifier.nonexist_nonexist": "不存在不存在时刻",
+  "curios.identifier.nonexist_exist": "不存在存在时刻",
+  "curios.identifier.maybe_exist": "可能存在存在时刻",
+  "curios.identifier.exist_exist": "已存在存在时刻",
+  "curios.identifier.impossible_nonexist": "不可能存在不可能存在时刻",
+
+  "curios.identifier.supreme": "至高",
+  "curios.identifier.wisdom": "智慧",
+  "curios.identifier.life": "生命",
+  "curios.identifier.chaos": "混沌",
+  "curios.identifier.self": "自我",
+  "curios.identifier.devour": "吞噬",
+  "curios.identifier.samsara": "轮回",
+
+  "item.divinebeast.deity.lore_phase1": "一切尚未开始，一切尚未出现",
+  "item.divinebeast.deity.lore_phase2": "一切都将被拯救，一切痛苦都不将存在",
+  "item.divinebeast.deity.progress": "时刻已就位：%s / %s",
+
+  "key.divinebeast.toggle_respawn": "救赎重生 开关",
+  "key.categories.divinebeast": "祂 · 兽",
+  "divinebeast.msg.redemption_respawn_on": "救赎重生：开启（击败带有救赎印记的生物时，在原地生成一个同样的生物）",
+  "divinebeast.msg.redemption_respawn_off": "救赎重生：关闭（击败带有救赎印记的生物时，不再原地生成）",
+
+  "item.divinebeast.nonexist_nonexist.lore": "此时一切都未发生",
+  "item.divinebeast.nonexist_exist.lore": "这一刻无尽的混沌诞生了",
+  "item.divinebeast.maybe_exist.lore": "混沌翻涌无尽的奇迹诞生了",
+  "item.divinebeast.exist_exist.lore": "在这一时刻，无尽的『兽』诞生，他们前行，他们吞噬，他们横渡着无尽的混沌",
+  "item.divinebeast.impossible_nonexist.lore": "『祂』诞生了。",
+
+  "divinebeast.msg.potion_stored": "已存入 %s 个药水效果",
+  "divinebeast.msg.potion_cleared": "已清空『已存在存在时刻』储存的药水效果",
+  "divinebeast.msg.potion_empty": "这瓶药水没有可存储的效果",
+  "divinebeast.msg.m5_revive": "『不可能存在不可能存在时刻』生效：你被复活了（20 秒无敌）",
+  "divinebeast.msg.m5_cooldown": "『不可能存在不可能存在时刻』冷却中，剩余 %s 秒",
+  "divinebeast.msg.samsara_revive": "『轮回』发动：消耗 1 层轮回，你复活了（刷新冷却并将叠层拉满）",
+
+  "item.divinebeast.beast.lore_curse": "生于奇迹，行于混沌",
+  "item.divinebeast.beast.lore_redemption": "内生轮回，超脱永恒",
+  "item.divinebeast.beast.lore_self": "生于轮回之内，超脱自我",
+  "item.divinebeast.beast.progress": "法则已就位：%s / 7"
+}

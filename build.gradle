@@ -1,0 +1,108 @@
+// Divine & Beast —— 基于 Curios API 的 Forge 1.20.1 饰品槽模组
+// 由 Forge MDK(1.20.1) 模板精简而来
+
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+
+version = '1.4.1'
+group = 'com.divinebeast'
+archivesBaseName = 'divinebeast'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+
+minecraft {
+    // 使用官方 Mojang 映射（1.20.1）
+    mappings channel: 'official', version: '1.20.1'
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+
+            // Curios 使用 Mixin，dev 运行时需要以下两个属性才能正确 remap
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                divinebeast { source sourceSets.main }
+            }
+        }
+
+        server {
+            workingDirectory project.file('run')
+
+            // Curios 使用 Mixin，dev 运行时需要以下两个属性才能正确 remap
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                divinebeast { source sourceSets.main }
+            }
+        }
+
+        data {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            args '--mod', 'divinebeast', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            mods {
+                divinebeast { source sourceSets.main }
+            }
+        }
+    }
+}
+
+// 数据生成输出目录（runData 生成物会进入这里）
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+repositories {
+    // Curios 官方 Maven —— 仅在启用下方 Curios API 依赖时需要
+    maven {
+        name = "Illusive Soulworks Maven"
+        url = "https://maven.theillusivec4.top/"
+    }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.3.0'
+
+    // ------------------------------------------------------------------
+    // Curios API
+    // 本模组需要 Curios 的 Java API 实现「佩戴核心饰品时动态解锁/收回槽位」
+    // （ICurio#getAttributeModifiers + CuriosApi.addSlotModifier）。
+    // 所有 Curios 引用都被隔离在 CuriosCompat 类中并做运行时门控，
+    // 因此 Curios 仍是"可选前置"：未安装时物品照常存在，只是没有槽位联动。
+    // ------------------------------------------------------------------
+    compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}:api")
+    runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
+}
+
+jar {
+    manifest {
+        attributes([
+                "Specification-Title"     : "divinebeast",
+                "Specification-Vendor"    : "divinebeast",
+                "Specification-Version"   : "1",
+                "Implementation-Title"    : project.name,
+                "Implementation-Version"  : project.version,
+                "Implementation-Vendor"   : "divinebeast",
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+jar.finalizedBy('reobfJar')
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

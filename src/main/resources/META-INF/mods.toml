@@ -1,0 +1,27 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "All rights reserved"
+
+[[mods]]
+modId = "divinebeast"
+version = "1.4.1"
+displayName = "Divine & Beast"
+authors = "divinebeast"
+description = """
+基于 Curios API 的饰品模组（Forge 1.20.1）。
+
+- 槽位：祂(divine) / 兽(beast)，及佩戴核心饰品后解锁的 12 个体系槽位
+- 饰品：『祂』『兽』与 12 件体系饰品（时刻 ×5 / 法则 ×7）
+- 『祂』效果：阶段一负面（5 项，逐件解除）与集齐后的救赎阶段（飞行/印记等，C 键可开关救赎重生）
+- 时刻饰品佩戴效果：四项数值防降 / 禁疗+反射 / 90% 免伤 / 药水增益与存储 / 死亡复活（180-等级秒冷却）
+- 『兽』效果（三阶段）：诅咒（7 条法则失控负面，逐件解除）→ 拯救（六件齐：停顿/吸血/兽群互战/不饥饿不掉落）→ 自我（七件全齐，效果待补）
+- 法则饰品佩戴即获得驯服正面（+50% 伤害/洞察/生命/混沌/自我盾/吞噬/轮回新生）
+- Curios 为可选前置：未安装时物品照常存在，只是没有槽位联动与效果
+"""
+
+# ============ 可选前置声明：Curios ============
+[[dependencies.divinebeast]]
+modId = "curios"
+mandatory = false
+ordering = "NONE"
+side = "BOTH"

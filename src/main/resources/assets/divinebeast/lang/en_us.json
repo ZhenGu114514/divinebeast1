@@ -1,0 +1,64 @@
+{
+  "itemGroup.divinebeast": "Divine & Beast",
+
+  "item.divinebeast.deity": "The Divine",
+  "item.divinebeast.beast": "The Beast",
+
+  "item.divinebeast.nonexist_nonexist": "Moment of Nonexist–Nonexist",
+  "item.divinebeast.nonexist_exist": "Moment of Nonexist–Exist",
+  "item.divinebeast.maybe_exist": "Moment of Maybe Exist–Exist",
+  "item.divinebeast.exist_exist": "Moment of Exist–Exist",
+  "item.divinebeast.impossible_nonexist": "Moment of Impossible Nonexist",
+
+  "item.divinebeast.supreme": "Supreme",
+  "item.divinebeast.wisdom": "Wisdom",
+  "item.divinebeast.life": "Life",
+  "item.divinebeast.chaos": "Chaos",
+  "item.divinebeast.self": "Self",
+  "item.divinebeast.devour": "Devour",
+  "item.divinebeast.samsara": "Samsara",
+
+  "curios.identifier.divine": "The Divine",
+  "curios.identifier.beast": "Beast",
+
+  "curios.identifier.nonexist_nonexist": "Nonexist–Nonexist",
+  "curios.identifier.nonexist_exist": "Nonexist–Exist",
+  "curios.identifier.maybe_exist": "Maybe Exist",
+  "curios.identifier.exist_exist": "Exist–Exist",
+  "curios.identifier.impossible_nonexist": "Impossible Nonexist",
+
+  "curios.identifier.supreme": "Supreme",
+  "curios.identifier.wisdom": "Wisdom",
+  "curios.identifier.life": "Life",
+  "curios.identifier.chaos": "Chaos",
+  "curios.identifier.self": "Self",
+  "curios.identifier.devour": "Devour",
+  "curios.identifier.samsara": "Samsara",
+
+  "item.divinebeast.deity.lore_phase1": "Nothing has begun; nothing has appeared.",
+  "item.divinebeast.deity.lore_phase2": "Everything shall be saved; no suffering shall remain.",
+  "item.divinebeast.deity.progress": "Moments ready: %s / %s",
+
+  "key.divinebeast.toggle_respawn": "Toggle Redemption Respawn",
+  "key.categories.divinebeast": "Divine & Beast",
+  "divinebeast.msg.redemption_respawn_on": "Redemption respawn: ON (marked foes respawn in place)",
+  "divinebeast.msg.redemption_respawn_off": "Redemption respawn: OFF",
+
+  "item.divinebeast.nonexist_nonexist.lore": "Nothing has happened yet.",
+  "item.divinebeast.nonexist_exist.lore": "In this moment, boundless chaos was born.",
+  "item.divinebeast.maybe_exist.lore": "The chaos surges; endless miracles are born.",
+  "item.divinebeast.exist_exist.lore": "In this moment the endless Beasts are born: they march, they devour, they cross the boundless chaos.",
+  "item.divinebeast.impossible_nonexist.lore": "In this moment, the Divine is born.",
+
+  "divinebeast.msg.potion_stored": "Stored %s potion effect(s).",
+  "divinebeast.msg.potion_cleared": "Cleared stored potion effects from the Moment of Exist–Exist.",
+  "divinebeast.msg.potion_empty": "This potion has no effects to store.",
+  "divinebeast.msg.m5_revive": "The Moment of Impossible Nonexist revives you (20s invulnerability)!",
+  "divinebeast.msg.m5_cooldown": "The Moment of Impossible Nonexist is on cooldown: %s s remaining.",
+  "divinebeast.msg.samsara_revive": "Samsara triggers: 1 layer consumed - you revive (cooldowns refreshed, stacks maxed).",
+
+  "item.divinebeast.beast.lore_curse": "Born of miracles, wandering through chaos.",
+  "item.divinebeast.beast.lore_redemption": "Samsara within; transcendence eternal.",
+  "item.divinebeast.beast.lore_self": "Born within samsara; transcending the self.",
+  "item.divinebeast.beast.progress": "Laws ready: %s / 7"
+}
