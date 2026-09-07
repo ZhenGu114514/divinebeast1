@@ -8,7 +8,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -86,7 +88,8 @@ public final class CuriosEffects {
     private static final int CURSE_DEATH = 4;       // 不可能存在不可能存在时刻
 
     /** 传送冷却（tick） */
-    private static final int TELEPORT_COOLDOWN = 20;
+    /** 可能存在存在时刻（诅咒触发）冷却：60 秒 */
+    private static final int TELEPORT_COOLDOWN = 1200;
     /** 随机传送半径 */
     private static final int TELEPORT_RADIUS = 24;
 
@@ -453,7 +456,7 @@ public final class CuriosEffects {
 
         // 可能存在存在时刻：造成伤害时随机传送（1 秒冷却）
         if (curseActive(attacker, CURSE_TELEPORT)) {
-            maybeTeleport(attacker);
+            applyMaybeExistCurse(attacker);
         }
 
         if (curseActive(attacker, CURSE_HEAL_HURT)) {
@@ -504,7 +507,7 @@ public final class CuriosEffects {
 
         // 可能存在存在时刻：受到伤害随机传送
         if (curseActive(player, CURSE_TELEPORT)) {
-            maybeTeleport(player);
+            applyMaybeExistCurse(player);
         }
 
         // 救赎阶段：攻击自身的生物 → 清效果 + 生命上限锁 100 + 打上救赎印记
@@ -519,32 +522,21 @@ public final class CuriosEffects {
         }
     }
 
-    /** 可能存在存在时刻：随机传送（1 秒冷却） */
-    private static void maybeTeleport(Player player) {
+    /** 可能存在存在时刻（诅咒）：造成/受到伤害时获得一个随机负面药水效果（60 秒冷却） */
+    private static void applyMaybeExistCurse(Player player) {
         long now = player.level().getGameTime();
         Long last = lastTeleportTick.get(player.getUUID());
         if (last != null && now - last < TELEPORT_COOLDOWN) {
             return;
         }
         lastTeleportTick.put(player.getUUID(), now);
-
-        Level level = player.level();
-        double x = player.getX();
-        double y = player.getY();
-        double z = player.getZ();
-        for (int attempt = 0; attempt < 24; attempt++) {
-            double tx = x + (level.random.nextDouble() * 2 - 1) * TELEPORT_RADIUS;
-            double tz = z + (level.random.nextDouble() * 2 - 1) * TELEPORT_RADIUS;
-            // 从上方往下找立足点
-            int startY = (int) Math.min(level.getMaxBuildHeight() - 2, y + 8);
-            for (int ty = startY; ty > level.getMinBuildHeight(); ty--) {
-                if (isStandable(level, tx, ty, tz)) {
-                    player.teleportTo(tx + 0.5D, ty + 1.0D, tz + 0.5D);
-                    player.fallDistance = 0.0F;
-                    return;
-                }
-            }
-        }
+        MobEffect[] pool = {
+                MobEffects.POISON, MobEffects.MOVEMENT_SLOWDOWN, MobEffects.WEAKNESS,
+                MobEffects.BLINDNESS, MobEffects.WITHER, MobEffects.HUNGER
+        };
+        MobEffect effect = pool[player.getRandom().nextInt(pool.length)];
+        int duration = (effect == MobEffects.WITHER || effect == MobEffects.BLINDNESS) ? 60 : 120;
+        player.addEffect(new MobEffectInstance(effect, duration, 0));
     }
 
     private static boolean isStandable(Level level, double x, int y, double z) {

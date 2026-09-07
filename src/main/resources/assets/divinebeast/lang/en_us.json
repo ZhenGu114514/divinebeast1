@@ -91,7 +91,7 @@
   "divinebeast.stage.beast_self": "Self: attacks strip armor and stun for 10s, +200% damage vs stunned; full lifesteal; 16-block damage splash; Strength VI / Absorption V while dealing damage; no hunger; doubled max HP and attack; no drops on death; every death grants +10% HP and attack (max 100 stacks).",
   "divinebeast.tooltip.deity_curse_0": "Moment of Nonexist–Nonexist: max HP 2, XP 0, tool durability 1, armor 0",
   "divinebeast.tooltip.deity_curse_1": "Moment of Nonexist–Exist: your attacks fully heal the target; you take that damage",
-  "divinebeast.tooltip.deity_curse_2": "Moment of Maybe Exist: random teleport when dealing or taking damage (1s cooldown)",
+  "divinebeast.tooltip.deity_curse_2": "Moment of Maybe Exist: gaining a random harmful potion effect when dealing or taking damage (60s cooldown)",
   "divinebeast.tooltip.deity_curse_3": "Moment of Exist–Exist: while any potion effect is active, lose 50% remaining HP/s (min 1)",
   "divinebeast.tooltip.deity_curse_4": "Moment of Impossible Nonexist: dying when a totem/revival would trigger",
   "divinebeast.tooltip.beast_curse_0": "Supreme: your attacks deal a fixed 1 damage",
