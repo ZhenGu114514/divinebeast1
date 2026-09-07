@@ -5,6 +5,7 @@ import com.divinebeast.divinebeast.net.CuriosEffectsState;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,7 +23,10 @@ import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.living.LivingKnockBackEvent;
+import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import org.apache.logging.log4j.LogManager;
@@ -65,6 +69,7 @@ public final class CuriosEffects {
     private static final UUID MAX_HEALTH_LOCK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000001");
     private static final UUID ARMOR_LOCK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000002");
     private static final UUID MOB_HEALTH_100 = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000003");
+    private static final UUID KNOCKBACK_RES = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000004");
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
     private static final int CURSE_LIFE_LOCK = 0;   // 不存在不存在时刻
@@ -90,6 +95,9 @@ public final class CuriosEffects {
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onLivingHurt);
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onLivingDamage);
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onLivingDeath);
+        MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onLivingFall);
+        MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onLivingKnockBack);
+        MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onMobEffectAdded);
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onTargetChange);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, CuriosEffects::onXpChange);
         LOGGER.info("[divinebeast] 『祂』效果引擎已注册（阶段一负面 ×5 / 救赎阶段）。");
@@ -187,6 +195,14 @@ public final class CuriosEffects {
             return;
         }
 
+        // 救赎：免疫负面效果 + 击退抗性 1
+        if (phaseTwo(player)) {
+            ensureKnockbackResistance(player);
+            clearHarmfulEffects(player);
+        } else {
+            clearKnockbackResistance(player);
+        }
+
         // 生命上限 2 / 护甲 0 / 工具耐久 1
         if (curseActive(player, CURSE_LIFE_LOCK)) {
             lockMaxHealth(player, 2.0D, MAX_HEALTH_LOCK);
@@ -210,13 +226,10 @@ public final class CuriosEffects {
             return;
         }
         if (enabled) {
+            // 救赎阶段：仅授予"可飞行"（mayfly），起飞/降落由玩家双击空格控制（同创造）
             boolean changed = false;
             if (!player.getAbilities().mayfly) {
                 player.getAbilities().mayfly = true;
-                changed = true;
-            }
-            if (!player.getAbilities().flying) {
-                player.getAbilities().flying = true;
                 changed = true;
             }
             if (changed && serverPlayer != null) {
@@ -227,6 +240,62 @@ public final class CuriosEffects {
             player.getAbilities().flying = false;
             if (serverPlayer != null) {
                 serverPlayer.onUpdateAbilities();
+            }
+        }
+    }
+
+    /** 救赎阶段无摔落伤害 */
+    private static void onLivingFall(LivingFallEvent event) {
+        if (event.getEntity().level().isClientSide) {
+            return;
+        }
+        if (event.getEntity() instanceof Player player && phaseTwo(player)) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** 救赎：不受攻击/爆炸击退 */
+    private static void onLivingKnockBack(LivingKnockBackEvent event) {
+        if (event.getEntity().level().isClientSide) {
+            return;
+        }
+        if (event.getEntity() instanceof Player player && phaseTwo(player)) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** 救赎：免疫负面药水/效果（阻止施加） */
+    private static void onMobEffectAdded(MobEffectEvent.Added event) {
+        if (event.getEntity().level().isClientSide) {
+            return;
+        }
+        if (event.getEntity() instanceof Player player && phaseTwo(player)
+                && event.getEffect() != null && !event.getEffect().getEffect().isBeneficial()) {
+            event.setCanceled(true);
+        }
+    }
+
+    /** 救赎：击退抗性拉满（配合事件双保险） */
+    private static void ensureKnockbackResistance(Player player) {
+        AttributeInstance inst = player.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
+        if (inst != null && inst.getModifier(KNOCKBACK_RES) == null) {
+            inst.addPermanentModifier(new AttributeModifier(KNOCKBACK_RES, "divinebeast_salvation_kb",
+                    1.0D, AttributeModifier.Operation.ADDITION));
+        }
+    }
+
+    private static void clearKnockbackResistance(Player player) {
+        AttributeInstance inst = player.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
+        if (inst != null) {
+            inst.removeModifier(KNOCKBACK_RES);
+        }
+    }
+
+    /** 救赎：清除身上残留的负面效果 */
+    private static void clearHarmfulEffects(Player player) {
+        for (MobEffectInstance effect : new java.util.ArrayList<>(player.getActiveEffects())) {
+            if (!effect.getEffect().isBeneficial()) {
+                player.removeEffect(effect.getEffect());
             }
         }
     }
@@ -328,6 +397,10 @@ public final class CuriosEffects {
         }
 
         if (phaseTwo(attacker)) {
+            // 救赎之击关闭时（C 键）：正常造成伤害
+            if (!CuriosEffectsState.respawnToggle(attacker)) {
+                return;
+            }
             // 救赎阶段：不造成伤害
             event.setCanceled(true);
             if (CuriosEffectsState.hasRedemptionMark(victim)) {
@@ -436,18 +509,18 @@ public final class CuriosEffects {
         if (!(killer instanceof Player player) || !(player.level() instanceof ServerLevel serverLevel)) {
             return;
         }
-        // 默认开启；按 C 键（服务端持久化开关）关闭后不再原地重生
+        // 默认开启；按 C 键（服务端持久化开关）关闭后不再转化村民
         if (!CuriosEffectsState.respawnToggle(player)) {
             return;
         }
-        EntityType<?> type = dead.getType();
         serverLevel.getServer().execute(() -> {
-            Entity copy = type.create(serverLevel);
-            if (copy == null) {
+            // 击败带救赎印记的生物 → 原地生成一个村民
+            Entity villager = net.minecraft.world.entity.EntityType.VILLAGER.create(serverLevel);
+            if (villager == null) {
                 return;
             }
-            copy.moveTo(dead.getX(), dead.getY(), dead.getZ(), dead.getYRot(), dead.getXRot());
-            serverLevel.addFreshEntity(copy);
+            villager.moveTo(dead.getX(), dead.getY(), dead.getZ(), dead.getYRot(), dead.getXRot());
+            serverLevel.addFreshEntity(villager);
         });
     }
 

@@ -63,5 +63,8 @@ public class DivineBeastItem extends Item {
             tooltip.add(Component.translatable("item.divinebeast.impossible_nonexist.lore")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
+        // 效果描述（所有物品通用）：item.divinebeast.<id>.desc，可含换行符
+        tooltip.add(Component.translatable(stack.getDescriptionId() + ".desc")
+                .withStyle(ChatFormatting.GRAY));
     }
 }

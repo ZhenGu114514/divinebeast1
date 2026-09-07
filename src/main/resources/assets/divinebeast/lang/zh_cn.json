@@ -39,10 +39,10 @@
   "item.divinebeast.deity.lore_phase2": "一切都将被拯救，一切痛苦都不将存在",
   "item.divinebeast.deity.progress": "时刻已就位：%s / %s",
 
-  "key.divinebeast.toggle_respawn": "救赎重生 开关",
+  "key.divinebeast.toggle_respawn": "救赎之击 开关",
   "key.categories.divinebeast": "祂 · 兽",
-  "divinebeast.msg.redemption_respawn_on": "救赎重生：开启（击败带有救赎印记的生物时，在原地生成一个同样的生物）",
-  "divinebeast.msg.redemption_respawn_off": "救赎重生：关闭（击败带有救赎印记的生物时，不再原地生成）",
+  "divinebeast.msg.redemption_respawn_on": "救赎之击：开启（攻击生物改为回满血；对印记生物无视护甲真伤；击杀印记生物原地变为村民）",
+  "divinebeast.msg.redemption_respawn_off": "救赎之击：关闭（正常造成伤害；击杀印记生物不再重生）",
 
   "item.divinebeast.nonexist_nonexist.lore": "此时一切都未发生",
   "item.divinebeast.nonexist_exist.lore": "这一刻无尽的混沌诞生了",
@@ -60,5 +60,20 @@
   "item.divinebeast.beast.lore_curse": "生于奇迹，行于混沌",
   "item.divinebeast.beast.lore_redemption": "内生轮回，超脱永恒",
   "item.divinebeast.beast.lore_self": "生于轮回之内，超脱自我",
-  "item.divinebeast.beast.progress": "法则已就位：%s / 7"
+  "item.divinebeast.beast.progress": "法则已就位：%s / 7",
+
+  "item.divinebeast.deity.desc": "佩戴「祂」将承受 5 项时刻负面，逐件佩戴时刻饰品即可解除；5 件集齐进入救赎：获得创造式飞行（双击空格起飞/降落，且不受摔落伤害）、生物不主动攻击你、攻击你的生物被清效果并打上救赎印记。\nC 键开关「救赎之击」：攻击生物不造成伤害而是使其回满血；攻击带印记生物时无视护甲与免伤；击杀带印记生物会在原地变为一名村民；救赎期间不受摔落伤害，免疫负面药水/效果与击退。",
+  "item.divinebeast.beast.desc": "佩戴「兽」时 7 条法则负面逐件解除；六件齐（无『自我』）→ 拯救：停顿 5 秒/+50% 增伤/吸血/兽群互斗/不饥饿不掉落；七件全齐 → 自·我：拆甲停顿 10 秒/+200% 增伤/全吸血/16 格 AOE/双倍生命与攻击/死亡叠层。",
+  "item.divinebeast.nonexist_nonexist.desc": "佩戴：生命上限/经验/工具耐久/护甲 四项完全不会下降（耐久即时修复；经验与生命、护甲按佩戴期最高水位保护）。",
+  "item.divinebeast.nonexist_exist.desc": "佩戴：攻击命中后目标 3 秒无法回复生命；自身受击时，伤害来源承受等额真伤。",
+  "item.divinebeast.maybe_exist.desc": "佩戴：受到伤害时 90% 概率完全不受此伤害。",
+  "item.divinebeast.exist_exist.desc": "佩戴：正面药水效果每秒 +2 秒持续时间；每秒回复 (10+正面效果数)% 已损失生命（至少 1 点）；可存取药水（潜行+手持药水右键=存入，手持本物品右键=清空），佩戴时自动施加存储药水并维持。",
+  "item.divinebeast.impossible_nonexist.desc": "佩戴：死亡时复活并获得 20 秒无敌；冷却 180 − 经验等级 秒。",
+  "item.divinebeast.supreme.desc": "佩戴：攻击不再造成普通伤害，而是直接扣除目标等量生命（真伤）；每次造成伤害 +1 层增伤（每层 +10%，上限 10 层，10 秒未命中清零）。",
+  "item.divinebeast.wisdom.desc": "佩戴：受到的所有伤害减半，并有 90% 概率完全无效本次伤害。",
+  "item.divinebeast.life.desc": "佩戴：任何来源的恢复效果翻倍；受到伤害时回复该伤害一半的生命值。",
+  "item.divinebeast.chaos.desc": "佩戴：攻击 90% 概率伤害翻倍；9% 造成敌方最大生命 50% 伤害；1% 造成 99%（后两者无视护甲）。",
+  "item.divinebeast.self.desc": "佩戴：每次造成伤害或每 5 秒 +1 层（上限 888）；每层 +20 吸收心与 +20 攻击力；每被扣 2 点吸收减 1 层。",
+  "item.divinebeast.devour.desc": "佩戴：饱食度 >4 时受击伤害先由饱食度抵消；饱食 0~4 不触发；没有饱食度（自·我阶段）时不受伤害。",
+  "item.divinebeast.samsara.desc": "佩戴：每 (180−等级/10) 秒 +1 层轮回（上限 100）；死亡消耗 1 层复活并刷新本模组冷却、叠层拉满；死亡不掉落经验。"
 }

@@ -258,6 +258,20 @@ function Draw-Icon($g, $s, [string]$key, [bool]$slot) {
     }
 }
 
+# 黑灰配色：饱和度归零并略微压暗（槽位图标用，逐像素）
+function Convert-ToGrayscale([System.Drawing.Bitmap]$bmp) {
+    for ($y = 0; $y -lt $bmp.Height; $y++) {
+        for ($x = 0; $x -lt $bmp.Width; $x++) {
+            $c = $bmp.GetPixel($x, $y)
+            if ($c.A -eq 0) { continue }
+            $lum = [int](0.2126 * $c.R + 0.7152 * $c.G + 0.0722 * $c.B)
+            $lum = [Math]::Min(220, [int]($lum * 0.82))
+            $bmp.SetPixel($x, $y, [System.Drawing.Color]::FromArgb($c.A, $lum, $lum, $lum))
+        }
+    }
+    return $bmp
+}
+
 function Render([string]$key, [int]$final, [string]$outDir, [bool]$slot) {
     $scale = 4
     $big = New-Object System.Drawing.Bitmap(($final * $scale), ($final * $scale))
@@ -265,10 +279,13 @@ function Render([string]$key, [int]$final, [string]$outDir, [bool]$slot) {
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
     $g.Clear([System.Drawing.Color]::Transparent)
     Draw-Icon $g ($final * $scale) $key $slot
+    $g.Dispose()
+    if ($slot) {
+        $big = Convert-ToGrayscale $big
+    }
     $path = Join-Path $outDir ($key + '.png')
     Save-Scaled $big $path $final
-    $g.Dispose()
-    Write-Host ("  {0}.png  {1}x{1}" -f $key, $final)
+    Write-Host ("  {0}.png  {1}x{1}{2}" -f $key, $final, $(if($slot){' (black-grey)'}else{''}))
 }
 
 $itemKeys = @('deity', 'beast', 'nonexist_nonexist', 'nonexist_exist', 'maybe_exist',
