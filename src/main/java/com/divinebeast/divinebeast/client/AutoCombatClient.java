@@ -71,7 +71,7 @@ public final class AutoCombatClient {
         if (target != null && target.isAlive() && !(target instanceof Player)) {
             double reach = 4.0D;
             if (player.distanceToSqr(target) <= reach * reach && player.getAttackStrengthScale(0.0F) >= 0.85F) {
-                gameMode.attack(target);
+                gameMode.attack(player, target);
                 player.swing(InteractionHand.MAIN_HAND);
             }
         }
