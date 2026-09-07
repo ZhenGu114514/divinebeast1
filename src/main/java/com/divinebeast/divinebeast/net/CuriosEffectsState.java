@@ -14,10 +14,10 @@ public final class CuriosEffectsState {
     private CuriosEffectsState() {
     }
 
-    /** 默认开启 */
+    /** 默认关闭：救赎之击需按 C 手动开启 */
     public static boolean respawnToggle(Player player) {
-        return !player.getPersistentData().contains(TAG_RESPAWN_TOGGLE)
-                || player.getPersistentData().getBoolean(TAG_RESPAWN_TOGGLE);
+        return player.getPersistentData().contains(TAG_RESPAWN_TOGGLE)
+                && player.getPersistentData().getBoolean(TAG_RESPAWN_TOGGLE);
     }
 
     public static void setRespawnToggle(Player player, boolean value) {

@@ -41,8 +41,8 @@
 
   "key.divinebeast.toggle_respawn": "Toggle Redemption Strike",
   "key.categories.divinebeast": "Divine & Beast",
-  "divinebeast.msg.redemption_respawn_on": "Redemption Strike: ON (unmarked attacks heal instead; defeating a marked foe grants 5s of x1000 attack)",
-  "divinebeast.msg.redemption_respawn_off": "Redemption Strike: OFF (normal damage; no kill reward)",
+  "divinebeast.msg.redemption_respawn_on": "Redemption Strike: ON (unmarked attacks heal instead; the marked-kill reward is always active)",
+  "divinebeast.msg.redemption_respawn_off": "Redemption Strike: OFF (default: normal damage)",
 
   "item.divinebeast.nonexist_nonexist.lore": "Nothing has happened yet.",
   "item.divinebeast.nonexist_exist.lore": "In this moment, boundless chaos was born.",
@@ -71,7 +71,7 @@
   "item.divinebeast.devour.lore": "Walking through chaos, devouring chaos.",
   "item.divinebeast.samsara.lore": "Four epochs end in annihilation.",
 
-  "item.divinebeast.deity.desc": "Wearing the Divine inflicts 5 Moment curses, each removed by wearing its Moment accessory. With all 5, enter Redemption: creative-style flight (double-tap jump to take off/land, no fall damage), mobs ignore you, attackers are cleansed and marked.\nC toggles Redemption Strike: attacks heal the target instead of damaging; marked foes take armor-ignoring true damage; While redeemed: attacks on marked foes ignore armor/immunity (always on), attack speed x10, movement speed x2, immune to damage from marked foes, and immune to harmful effects, fall damage and knockback.\nThe C key toggles Redemption Strike: ON = attacks on unmarked foes heal them instead, and defeating a marked foe grants 5s of x1000 attack; OFF = normal damage and no reward.",
+  "item.divinebeast.deity.desc": "Wearing the Divine inflicts 5 Moment curses, removed by equipping the matching Moments. With all 5, enter Redemption: creative-style flight (double-tap jump to take off/land), mobs ignore you, attackers are cleansed and marked.\nAlways active in Redemption: marked foes take armor-ignoring true damage; attack speed x10; movement speed x2; immune to damage from marked foes; immune to harmful effects, fall damage and knockback; defeating a marked foe grants 5s of x1000 attack.\nThe C key toggles Redemption Strike: ON = attacks on unmarked foes deal no damage and heal them to full; OFF (default) = normal damage.",
   "item.divinebeast.beast.desc": "Wearing the Beast removes Law curses one by one; six Laws (no Self) -> Salvation: 5s stun/+50% vs stunned/lifesteal/mob rampage/no hunger/no drops. All seven -> Self: armor-break 10s stun/+200% vs stunned/full lifesteal/16-block AOE/doubled HP & attack/death stacking.",
   "item.divinebeast.nonexist_nonexist.desc": "Worn: max health, XP, tool durability and armor can never decrease (instant repair; XP/health/armor protected at their highest levels).",
   "item.divinebeast.nonexist_exist.desc": "Worn: your attacks prevent the target from healing for 3s; when hurt, the attacker suffers the same damage as true damage.",

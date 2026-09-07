@@ -62,6 +62,7 @@ public final class BeastEffects {
     private static final String TAG_M5_REVIVE = "divinebeast.m5_last_revive";      // 时刻5 复活冷却(可被轮回刷新)
     private static final String ADV_BEAST_REDEMPTION = "divinebeast.adv.beast_redemption";
     private static final String ADV_BEAST_SELF = "divinebeast.adv.beast_self";
+    private static final String REDEEM_DISPLAY = "『兽』";
     private static final String SELF_DISPLAY = "『自·我』";
 
     // 顺序：supreme wisdom life chaos self devour samsara
@@ -879,22 +880,32 @@ public final class BeastEffects {
         return index >= 0 && index < LAW_SLOTS.length && lawWorn(entity, index);
     }
 
-    /** 自·我阶段：仅在饰品栏中的『兽』显示名称改为 『自·我』；离开该阶段恢复原名称 */
+    /** 仅在饰品栏改名：拯救 → 红『兽』；自·我 → 金『自·我』；其余恢复原名称 */
     private static void renameBeastWhileSelf(Player player, int stage) {
         Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isEmpty()) {
             return;
+        }
+        String wanted = null;
+        ChatFormatting color = null;
+        if (stage == 2) {
+            wanted = REDEEM_DISPLAY;
+            color = ChatFormatting.RED;
+        } else if (stage == 3) {
+            wanted = SELF_DISPLAY;
+            color = ChatFormatting.GOLD;
         }
         for (SlotResult result : optional.get().findCurios(BEAST_SLOT)) {
             ItemStack stack = result.stack();
             if (!stack.is(ModItems.BEAST.get())) {
                 continue;
             }
-            if (stage == 3) {
-                if (!SELF_DISPLAY.equals(stack.getHoverName().getString())) {
-                    stack.setHoverName(Component.literal(SELF_DISPLAY).withStyle(ChatFormatting.GOLD));
+            if (wanted != null) {
+                if (!wanted.equals(stack.getHoverName().getString())) {
+                    stack.setHoverName(Component.literal(wanted).withStyle(color));
                 }
-            } else if (SELF_DISPLAY.equals(stack.getHoverName().getString())) {
+            } else if (REDEEM_DISPLAY.equals(stack.getHoverName().getString())
+                    || SELF_DISPLAY.equals(stack.getHoverName().getString())) {
                 stack.resetHoverName();
             }
             break;

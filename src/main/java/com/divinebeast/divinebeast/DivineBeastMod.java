@@ -1,5 +1,6 @@
 package com.divinebeast.divinebeast;
 
+import com.divinebeast.divinebeast.client.AutoCombatClient;
 import com.divinebeast.divinebeast.client.ClientKeybinds;
 import com.divinebeast.divinebeast.curio.BeastEffects;
 import com.divinebeast.divinebeast.curio.CuriosCompat;
@@ -43,6 +44,8 @@ public class DivineBeastMod {
         // C 键（救赎重生开关）键位仅在客户端注册
         DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> ClientKeybinds.init(modBus));
+        DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> () -> AutoCombatClient.init());
 
         if (CompatChecks.curiosLoaded()) {
             // 只有走到这里才会真正加载这几个类（内含 Curios API 引用）

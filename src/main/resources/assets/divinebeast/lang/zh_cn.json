@@ -41,8 +41,8 @@
 
   "key.divinebeast.toggle_respawn": "救赎之击 开关",
   "key.categories.divinebeast": "祂 · 兽",
-  "divinebeast.msg.redemption_respawn_on": "救赎之击：开启（攻击未带印记生物改为回满血；击败带救赎印记生物获得 5 秒攻击力×1000）",
-  "divinebeast.msg.redemption_respawn_off": "救赎之击：关闭（正常造成伤害；无击杀奖励）",
+  "divinebeast.msg.redemption_respawn_on": "救赎之击：开启（攻击未带印记生物改为回满血；印记击杀奖励为常驻，不受本开关影响）",
+  "divinebeast.msg.redemption_respawn_off": "救赎之击：关闭（默认：正常造成伤害）",
 
   "item.divinebeast.nonexist_nonexist.lore": "此时一切都未发生",
   "item.divinebeast.nonexist_exist.lore": "这一刻无尽的混沌诞生了",
@@ -71,7 +71,7 @@
   "item.divinebeast.devour.lore": "行于混沌，吞噬混沌",
   "item.divinebeast.samsara.lore": "四纪元终达毁灭",
 
-  "item.divinebeast.deity.desc": "佩戴「祂」将承受 5 项时刻负面，逐件佩戴时刻饰品即可解除；5 件集齐进入救赎：获得创造式飞行（双击空格起飞/降落，且不受摔落伤害）、生物不主动攻击你、攻击你的生物被清效果并打上救赎印记。\nC 键开关「救赎之击」：攻击生物不造成伤害而是使其回满血；攻击带印记生物时无视护甲与免伤；救赎期间常驻：攻击带救赎印记的生物无视护甲/免伤；攻击速度 ×10、移动速度 ×2；不受带印记生物造成的伤害；免疫负面效果、摔落伤害与击退。\nC 键「救赎之击」开启时：攻击未带印记的生物不造成伤害而是使其回满血，击败带印记生物使你获得 5 秒攻击力×1000；关闭则正常造成伤害、无奖励。",
+  "item.divinebeast.deity.desc": "佩戴「祂」将承受 5 项时刻负面，逐件佩戴时刻饰品即可解除；5 件集齐进入救赎：获得创造式飞行（双击空格起飞/降落）、生物不主动攻击你、攻击你的生物被清效果并打上救赎印记。\n救赎·常驻：对带印记生物无视护甲/免伤真伤；攻击速度×10、移动速度×2；免疫带印记生物造成的伤害；免疫负面效果、摔落伤害与击退；击败带印记生物获得 5 秒攻击力×1000。\nC 键「救赎之击」仅开关一项：开启时攻击未带印记的生物不造成伤害、而是使其回满血；关闭（默认）则正常造成伤害。",
   "item.divinebeast.beast.desc": "佩戴「兽」时 7 条法则负面逐件解除；六件齐（无『自我』）→ 拯救：停顿 5 秒/+50% 增伤/吸血/兽群互斗/不饥饿不掉落；七件全齐 → 自·我：拆甲停顿 10 秒/+200% 增伤/全吸血/16 格 AOE/双倍生命与攻击/死亡叠层。",
   "item.divinebeast.nonexist_nonexist.desc": "佩戴：生命上限/经验/工具耐久/护甲 四项完全不会下降（耐久即时修复；经验与生命、护甲按佩戴期最高水位保护）。",
   "item.divinebeast.nonexist_exist.desc": "佩戴：攻击命中后目标 3 秒无法回复生命；自身受击时，伤害来源承受等额真伤。",

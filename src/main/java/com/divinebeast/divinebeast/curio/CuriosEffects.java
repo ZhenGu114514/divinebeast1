@@ -3,6 +3,8 @@ package com.divinebeast.divinebeast.curio;
 import com.divinebeast.divinebeast.item.ModItems;
 import com.divinebeast.divinebeast.net.CuriosEffectsState;
 import com.divinebeast.divinebeast.reward.ProgressGrants;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -182,6 +184,9 @@ public final class CuriosEffects {
 
         // 攻击力×1000 奖励到期收回
         expireDivineSwing(player, player.level().getGameTime());
+
+        // 救赎形态：饰品栏中『祂』改名为彩色『祂』（每秒随机换色）
+        renameDeityInCurio(player, phaseTwo(player));
 
         // 飞行 / 收回
         if (phaseTwo(player)) {
@@ -579,11 +584,10 @@ public final class CuriosEffects {
         if (!(killer instanceof Player player) || !(player.level() instanceof ServerLevel serverLevel)) {
             return;
         }
-        // 默认开启；按 C 键（服务端持久化开关）关闭后无奖励
-        if (!CuriosEffectsState.respawnToggle(player)) {
+        // 常驻奖励：击败带救赎印记的生物 → 自身获得 5 秒攻击力 ×1000（不受 C 键影响，救赎阶段内必触发）
+        if (!phaseTwo(player)) {
             return;
         }
-        // 击败带救赎印记的生物 → 自身获得 5 秒攻击力 ×1000
         grantDivineSwing(player);
     }
 
@@ -647,6 +651,35 @@ public final class CuriosEffects {
             if (atk != null) {
                 atk.removeModifier(REDEEM_ATK);
             }
+        }
+    }
+
+    private static final ChatFormatting[] DEITY_COLORS = {
+            ChatFormatting.RED, ChatFormatting.GOLD, ChatFormatting.YELLOW, ChatFormatting.GREEN,
+            ChatFormatting.AQUA, ChatFormatting.LIGHT_PURPLE, ChatFormatting.BLUE, ChatFormatting.WHITE
+    };
+    private static final String DEITY_DISPLAY = "『祂』";
+
+    /** 救赎形态：饰品栏中的『祂』每秒随机变色（未救赎则恢复原名） */
+    private static void renameDeityInCurio(Player player, boolean redemption) {
+        java.util.Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
+        if (optional.isEmpty()) {
+            return;
+        }
+        for (top.theillusivec4.curios.api.SlotResult result : optional.get().findCurios(DEITY_SLOT)) {
+            ItemStack stack = result.stack();
+            if (!stack.is(ModItems.DEITY.get())) {
+                continue;
+            }
+            if (redemption) {
+                if (player.tickCount % 20 == 0 || !DEITY_DISPLAY.equals(stack.getHoverName().getString())) {
+                    ChatFormatting color = DEITY_COLORS[player.getRandom().nextInt(DEITY_COLORS.length)];
+                    stack.setHoverName(Component.literal(DEITY_DISPLAY).withStyle(color));
+                }
+            } else if (DEITY_DISPLAY.equals(stack.getHoverName().getString())) {
+                stack.resetHoverName();
+            }
+            break;
         }
     }
 
