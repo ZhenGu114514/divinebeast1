@@ -38,6 +38,9 @@ public final class AscensionEffects {
     private static final String TRUEHEART_SLOT = "trueheart";
     private static final double BEACON_RADIUS = 5.0D;
 
+    /** 同步标记：当前伤害来自祂者极光柱（豁免"不可造成伤害"规则） */
+    private static boolean beaconStrike = false;
+
     private AscensionEffects() {
     }
 
@@ -103,12 +106,9 @@ public final class AscensionEffects {
         boolean phasing = heFirst || heExtreme;
 
         if (phasing) {
-            // 近似：不可见 + 无碰撞
+            // 近似：不可见（无碰撞需旁观模式能力，暂以隐身近似）
             if (!player.isInvisible()) {
                 player.setInvisible(true);
-            }
-            if (!player.isNoPhysics()) {
-                player.setNoPhysics(true);
             }
             // 虚空保护：低于世界底则送回上方
             if (player.getY() < player.level().getMinBuildHeight() - 4) {
@@ -118,9 +118,6 @@ public final class AscensionEffects {
             if (player.isInvisible() && !player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) {
                 player.setInvisible(false);
             }
-            if (player.isNoPhysics()) {
-                player.setNoPhysics(false);
-            }
         }
 
         if (heExtreme && player.tickCount % 20 == 0) {
@@ -129,7 +126,12 @@ public final class AscensionEffects {
                     net.minecraft.world.phys.AABB.ofSize(player.position(),
                             BEACON_RADIUS * 2, BEACON_RADIUS * 2, BEACON_RADIUS * 2))) {
                 if (mob.isAlive()) {
-                    mob.hurt(mob.damageSources().playerAttack(player), dmg);
+                    beaconStrike = true;
+                    try {
+                        mob.hurt(mob.damageSources().playerAttack(player), dmg);
+                    } finally {
+                        beaconStrike = false;
+                    }
                 }
             }
         }
@@ -140,7 +142,7 @@ public final class AscensionEffects {
     // ==================================================================
 
     private static void onLivingAttack(LivingAttackEvent event) {
-        if (event.getEntity().level().isClientSide) {
+        if (event.getEntity().level().isClientSide || beaconStrike) {
             return;
         }
         Player attacker = null;
@@ -155,20 +157,22 @@ public final class AscensionEffects {
     }
 
     private static boolean wearingHeFirstOrExtreme(DamageSource source) {
+        Player attacker = null;
         Entity e = source.getEntity();
-        if (!(e instanceof Player player)) {
-            if (source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.Projectile projectile
-                    && projectile.getOwner() instanceof Player player2) {
-                player = player2;
-            } else {
-                return false;
-            }
+        if (e instanceof Player player) {
+            attacker = player;
+        } else if (source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.Projectile projectile
+                && projectile.getOwner() instanceof Player player2) {
+            attacker = player2;
         }
-        return wearingHeFirst(player) || wearingHeExtreme(player);
+        if (attacker == null) {
+            return false;
+        }
+        return wearingHeFirst(attacker) || wearingHeExtreme(attacker);
     }
 
     private static void onLivingDamage(LivingDamageEvent event) {
-        if (event.getEntity().level().isClientSide) {
+        if (event.getEntity().level().isClientSide || beaconStrike) {
             return;
         }
         // 祂者初/祂者极：不可受到伤害（含虚空等一切）
