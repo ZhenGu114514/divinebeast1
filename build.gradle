@@ -8,7 +8,7 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
 }
 
-version = '1.6.20'
+version = '1.6.21'
 group = 'com.divinebeast'
 archivesBaseName = 'divinebeast'
 

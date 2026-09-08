@@ -3,6 +3,7 @@ package com.divinebeast.divinebeast;
 import com.divinebeast.divinebeast.client.AutoCombatClient;
 import com.divinebeast.divinebeast.client.ClientKeybinds;
 import com.divinebeast.divinebeast.curio.BeastEffects;
+import com.divinebeast.divinebeast.curio.AscensionEffects;
 import com.divinebeast.divinebeast.curio.CuriosCompat;
 import com.divinebeast.divinebeast.curio.CuriosEffects;
 import com.divinebeast.divinebeast.curio.MomentEffects;
@@ -55,6 +56,7 @@ public class DivineBeastMod {
             CuriosEffects.register();
             MomentEffects.register();
             BeastEffects.register();
+            AscensionEffects.register();
         } else {
             LOGGER.info("[{}] 未检测到 Curios，槽位联动与『祂』效果关闭；物品仍可正常注册与使用。", MOD_ID);
         }
