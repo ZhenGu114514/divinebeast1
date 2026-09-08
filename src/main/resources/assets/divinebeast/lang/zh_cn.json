@@ -93,7 +93,7 @@
   "divinebeast.tooltip.deity_curse_0": "不存在不存在时刻：生命上限=2、经验=0、工具耐久=1、护甲=0",
   "divinebeast.tooltip.deity_curse_1": "不存在存在时刻：攻击令目标回满血，自身承受该伤害",
   "divinebeast.tooltip.deity_curse_2": "可能存在存在时刻：造成/受到伤害时获得随机负面药水效果（60 秒冷却）",
-  "divinebeast.tooltip.deity_curse_3": "已存在存在时刻：有药水效果时每秒扣 50% 剩余生命（≥1）",
+  "divinebeast.tooltip.deity_curse_3": "已存在存在时刻：有药水效果且剩余生命≥2 时，每秒扣 50% 剩余生命（至少 1 点）",
   "divinebeast.tooltip.deity_curse_4": "不可能存在不可能存在时刻：图腾/复活触发时直接死亡",
   "divinebeast.tooltip.beast_curse_0": "至高：攻击伤害固定为 1",
   "divinebeast.tooltip.beast_curse_1": "智慧：受到的非物理伤害翻倍",

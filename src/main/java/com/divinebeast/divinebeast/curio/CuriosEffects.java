@@ -237,8 +237,9 @@ public final class CuriosEffects {
             unlockAttribute(player, ARMOR_LOCK);
         }
 
-        // 已存在存在时刻：身上有药水效果时每 1 秒扣 50% 剩余生命（至少 1 点）
-        if (curseActive(player, CURSE_DRAIN) && player.tickCount % 20 == 0 && !player.getActiveEffects().isEmpty()) {
+        // 已存在存在时刻（诅咒）：有药水效果时每秒扣 50% 剩余生命（至少 1 点）；剩余生命 <2 时不触发
+        if (curseActive(player, CURSE_DRAIN) && player.getHealth() >= 2.0F
+                && player.tickCount % 20 == 0 && !player.getActiveEffects().isEmpty()) {
             float amount = Math.max(1.0F, (float) Math.ceil(player.getHealth() * 0.5F));
             player.hurt(player.damageSources().magic(), amount);
         }

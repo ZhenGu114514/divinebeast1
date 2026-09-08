@@ -92,7 +92,7 @@
   "divinebeast.tooltip.deity_curse_0": "Moment of Nonexist–Nonexist: max HP 2, XP 0, tool durability 1, armor 0",
   "divinebeast.tooltip.deity_curse_1": "Moment of Nonexist–Exist: your attacks fully heal the target; you take that damage",
   "divinebeast.tooltip.deity_curse_2": "Moment of Maybe Exist: gaining a random harmful potion effect when dealing or taking damage (60s cooldown)",
-  "divinebeast.tooltip.deity_curse_3": "Moment of Exist–Exist: while any potion effect is active, lose 50% remaining HP/s (min 1)",
+  "divinebeast.tooltip.deity_curse_3": "Moment of Exist–Exist: while any potion effect is active and HP >= 2, lose 50% remaining HP/s (min 1)",
   "divinebeast.tooltip.deity_curse_4": "Moment of Impossible Nonexist: dying when a totem/revival would trigger",
   "divinebeast.tooltip.beast_curse_0": "Supreme: your attacks deal a fixed 1 damage",
   "divinebeast.tooltip.beast_curse_1": "Wisdom: non-physical damage taken is doubled",
