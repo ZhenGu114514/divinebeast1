@@ -156,7 +156,9 @@ public final class CuriosCompat {
     private static void onAttachCapabilities(AttachCapabilitiesEvent<ItemStack> event) {
         ItemStack stack = event.getObject();
         Item item = stack.getItem();
-        if (item != ModItems.DEITY.get() && item != ModItems.BEAST.get()) {
+        if (item != ModItems.DEITY.get() && item != ModItems.BEAST.get()
+                && item != ModItems.HE_FIRST.get() && item != ModItems.HE_EXTREME.get()
+                && item != ModItems.REDEMPTION.get() && item != ModItems.TRUE_HEART.get()) {
             return;
         }
         event.addCapability(CuriosCapability.ID_ITEM, CuriosApi.createCurioProvider(new SlotUnlockCurio(stack)));
@@ -195,6 +197,10 @@ public final class CuriosCompat {
                 unlockedSlots = DEITY_UNLOCKED_SLOTS;
             } else if (item == ModItems.BEAST.get()) {
                 unlockedSlots = BEAST_UNLOCKED_SLOTS;
+            } else if (item == ModItems.HE_FIRST.get()) {
+                unlockedSlots = new String[]{"redemption"};   // 祂者初 → 解锁「救赎」槽
+            } else if (item == ModItems.HE_EXTREME.get()) {
+                unlockedSlots = new String[]{"trueheart"};    // 祂者极 → 解锁「本心」槽
             }
             if (unlockedSlots != null) {
                 for (String slotId : unlockedSlots) {

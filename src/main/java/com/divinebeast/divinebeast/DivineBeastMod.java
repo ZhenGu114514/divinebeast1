@@ -10,6 +10,7 @@ import com.divinebeast.divinebeast.item.ModItems;
 import com.divinebeast.divinebeast.net.Networking;
 import com.divinebeast.divinebeast.reward.BossRewards;
 import com.divinebeast.divinebeast.reward.FirstChestReward;
+import com.divinebeast.divinebeast.reward.FirstKillDrops;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
@@ -39,8 +40,9 @@ public class DivineBeastMod {
 
         ModItems.register(modBus);
         Networking.register();
-        FirstChestReward.register(); // 每个玩家打开的第一个箱子 → 『祂』『兽』
+        FirstChestReward.register(); // 首箱→『祂』『兽』；分维度首箱→感知/意识/反叛
         BossRewards.register();      // 末影龙→时刻、凋灵→法则 掉落
+        FirstKillDrops.register();   // 击杀首只中立/敌对 → 悲/伤
         // C 键（救赎重生开关）键位仅在客户端注册
         DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> ClientKeybinds.init(modBus));

@@ -78,6 +78,8 @@ public final class CuriosEffects {
     private static final UUID REDEEM_ATK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000005");
     private static final UUID REDEEM_ATK_SPEED = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000006");
     private static final UUID REDEEM_MOVE_SPEED = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000007");
+    private static final UUID INSIGHT_SLOT = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a1");
+    private static final java.util.Set<java.util.UUID> INSIGHT_APPLIED = new java.util.HashSet<>();
     private static final String ADV_REDEMPTION_TAG = "divinebeast.adv.deity_redemption";
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
@@ -185,6 +187,9 @@ public final class CuriosEffects {
         }
         Player player = event.player;
 
+        // 证悟槽：祂·救赎 且 兽·自·我 时解锁（transient slot modifier）
+        syncInsightSlot(player);
+
         // 攻击力×1000 奖励到期收回
         expireDivineSwing(player, player.level().getGameTime());
 
@@ -204,6 +209,18 @@ public final class CuriosEffects {
                 && !player.getPersistentData().getBoolean(ADV_REDEMPTION_TAG)) {
             player.getPersistentData().putBoolean(ADV_REDEMPTION_TAG, true);
             ProgressGrants.grant(serverPlayer, "deity_redemption");
+        }
+        // 同时满足「祂救赎＋兽自·我」→ 自动获得『祂者初』（一次）
+        if (phaseTwo(player) && BeastEffects.stageOf(player) == 3
+                && player instanceof ServerPlayer serverPlayer2
+                && !player.getPersistentData().getBoolean("divinebeast.got_he_first")) {
+            player.getPersistentData().putBoolean("divinebeast.got_he_first", true);
+            ItemStack gift = new ItemStack(ModItems.HE_FIRST.get());
+            gift.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+            if (!player.getInventory().add(gift)) {
+                player.drop(gift, false);
+            }
+            player.sendSystemMessage(Component.translatable("divinebeast.msg.got_he_first"));
         }
         if (curseActive(player, CURSE_LIFE_LOCK)) {
             if (player.totalExperience != 0 || player.experienceLevel != 0 || player.experienceProgress != 0.0F) {
@@ -673,6 +690,31 @@ public final class CuriosEffects {
                 stack.resetHoverName();
             }
             break;
+        }
+    }
+
+    /** 证悟(insight)槽：『祂』救赎 且 『兽』自·我 → +1 格（临时修饰）；否则收回 */
+    private static void syncInsightSlot(Player player) {
+        boolean wanted = phaseTwo(player) && BeastEffects.stageOf(player) == 3;
+        UUID uuid = player.getUUID();
+        java.util.Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
+        if (optional.isEmpty()) {
+            return;
+        }
+        ICuriosItemHandler handler = optional.get();
+        boolean applied = INSIGHT_APPLIED.contains(uuid);
+        if (wanted && !applied) {
+            com.google.common.collect.Multimap<String, AttributeModifier> map = com.google.common.collect.LinkedHashMultimap.create();
+            map.put("insight", new AttributeModifier(INSIGHT_SLOT, "divinebeast_insight", 1.0D,
+                    AttributeModifier.Operation.ADDITION));
+            handler.addTransientSlotModifiers(map);
+            INSIGHT_APPLIED.add(uuid);
+        } else if (!wanted && applied) {
+            com.google.common.collect.Multimap<String, AttributeModifier> map = com.google.common.collect.LinkedHashMultimap.create();
+            map.put("insight", new AttributeModifier(INSIGHT_SLOT, "divinebeast_insight", 1.0D,
+                    AttributeModifier.Operation.ADDITION));
+            handler.removeSlotModifiers(map);
+            INSIGHT_APPLIED.remove(uuid);
         }
     }
 

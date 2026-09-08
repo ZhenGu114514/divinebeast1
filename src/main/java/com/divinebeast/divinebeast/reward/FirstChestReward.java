@@ -77,6 +77,28 @@ public final class FirstChestReward {
         if (!missed) {
             player.sendSystemMessage(Component.translatable("divinebeast.msg.first_chest"));
         }
+
+        // 分维度首箱 → 感知/意识/反叛（各维度各一次）
+        String dimKey = player.level().dimension().location().toString();
+        String dimFlag = "divinebeast.first_dim_" + dimKey;
+        if (!tag.getBoolean(dimFlag)) {
+            ItemStack fragment = null;
+            String key = "minecraft:overworld";
+            if (dimKey.equals(key)) {
+                fragment = new ItemStack(ModItems.PERCEPTION.get());      // 主世界→感知
+            } else if (dimKey.equals("minecraft:the_nether")) {
+                fragment = new ItemStack(ModItems.CONSCIOUSNESS.get());   // 下界→意识
+            } else if (dimKey.equals("minecraft:the_end")) {
+                fragment = new ItemStack(ModItems.REBELLION.get());       // 末地→反叛
+            }
+            if (fragment != null) {
+                tag.putBoolean(dimFlag, true);
+                if (!addToChest(chest, fragment)) {
+                    dropNear(player, fragment);
+                }
+                player.sendSystemMessage(Component.translatable("divinebeast.msg.first_dim_chest"));
+            }
+        }
     }
 
     private static boolean isChestLike(BlockEntity entity) {

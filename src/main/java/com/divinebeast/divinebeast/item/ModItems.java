@@ -91,6 +91,28 @@ public final class ModItems {
             ITEMS.register("samsara", () -> new DivineBeastItem(DivineBeastItem.curioProperties()));
 
     // ------------------------------------------------------------------
+    // 证悟系 · 进阶链（祂者初 → 救赎 → 祂者极 → 本心）
+    // ------------------------------------------------------------------
+    public static final RegistryObject<Item> HE_FIRST =
+            ITEMS.register("he_first", () -> new DivineBeastItem(DivineBeastItem.curioProperties()));   // 祂者初
+    public static final RegistryObject<Item> PERCEPTION =
+            ITEMS.register("perception", () -> new DivineBeastItem(DivineBeastItem.curioProperties())); // 感知
+    public static final RegistryObject<Item> CONSCIOUSNESS =
+            ITEMS.register("consciousness", () -> new DivineBeastItem(DivineBeastItem.curioProperties())); // 意识
+    public static final RegistryObject<Item> REBELLION =
+            ITEMS.register("rebellion", () -> new DivineBeastItem(DivineBeastItem.curioProperties())); // 反叛
+    public static final RegistryObject<Item> REDEMPTION =
+            ITEMS.register("redemption", () -> new DivineBeastItem(DivineBeastItem.curioProperties())); // 救赎（阶段物品）
+    public static final RegistryObject<Item> HE_EXTREME =
+            ITEMS.register("he_extreme", () -> new DivineBeastItem(DivineBeastItem.curioProperties())); // 祂者极
+    public static final RegistryObject<Item> GRIEF =
+            ITEMS.register("grief", () -> new DivineBeastItem(DivineBeastItem.curioProperties()));     // 悲
+    public static final RegistryObject<Item> PAIN =
+            ITEMS.register("pain", () -> new DivineBeastItem(DivineBeastItem.curioProperties()));     // 伤
+    public static final RegistryObject<Item> TRUE_HEART =
+            ITEMS.register("true_heart", () -> new DivineBeastItem(DivineBeastItem.curioProperties())); // 本心
+
+    // ------------------------------------------------------------------
     // 全部物品（用于创造模式标签等）
     // ------------------------------------------------------------------
     /** 祂系「时刻」饰品（顺序与槽位/效果索引一一对应：nonexist_nonexist…impossible_nonexist） */
@@ -100,7 +122,8 @@ public final class ModItems {
     public static final List<RegistryObject<Item>> ALL_ITEMS = List.of(
             DEITY, BEAST,
             NONEXIST_NONEXIST, NONEXIST_EXIST, MAYBE_EXIST, EXIST_EXIST, IMPOSSIBLE_NONEXIST,
-            SUPREME, WISDOM, LIFE, CHAOS, SELF, DEVOUR, SAMSARA);
+            SUPREME, WISDOM, LIFE, CHAOS, SELF, DEVOUR, SAMSARA,
+            HE_FIRST, PERCEPTION, CONSCIOUSNESS, REBELLION, REDEMPTION, HE_EXTREME, GRIEF, PAIN, TRUE_HEART);
 
     public static final RegistryObject<CreativeModeTab> TAB =
             TABS.register("divinebeast_tab", () -> CreativeModeTab.builder()
