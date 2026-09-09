@@ -36,6 +36,10 @@ import java.util.List;
  * <p>圆环平面始终竖直（垂直于地面），法向取玩家水平朝向；圆心放在脑后。
  * 当前玩家可能同时满足多个体系形态（衪系 + 兽系），每个形态各画一环、半径逐层外扩。
  *
+ * <p>环参照"诡厄巫法：终末之环"的表现（参考图）：竖直大圆环为中心，
+ * 环心有一枚发光光球，竖直平面内向外放射光芒线。全程用线条建模、无粒子。
+ * 形态颜色暂时为占位色，后续按"名字颜色"替换。
+ *
  * <p>纯客户端渲染、无网络同步；Curios 调用全部以全限定名写在 curiosLoaded
  * 守卫内，未装 Curios 时类可安全加载并空转。
  */
@@ -60,6 +64,20 @@ public final class OrbitAuraClient {
     private static final int RING_SEGMENTS = 96;
     /** 圆环中心高度（格，头部中心）。 */
     private static final double HEAD_CENTER_Y = 1.42D;
+
+    // ---- 终末之环式样（参考图：主环 + 中心光球 + 放射光芒线，全部线条建模、无粒子） ----
+    /** 中心光球半径占该环半径的比例。 */
+    private static final double CORE_FRAC = 0.16D;
+    /** 中心光球同心光环数（内白外色，模拟发光光晕）。 */
+    private static final int CORE_RINGS = 3;
+    /** 放射光芒线数量（竖直环平面内，0=正上方，8 条含上下左右+斜角）。 */
+    private static final int RAYS = 8;
+    /** 光芒线向外延伸长度系数（相对环半径）。 */
+    private static final double SPIKE_SCALE = 1.45D;
+    /** 光芒线内侧段（核缘→环）透明度。 */
+    private static final float SPIKE_INNER_ALPHA = 0.85F;
+    /** 光芒线外侧段（环→外伸）透明度。 */
+    private static final float SPIKE_OUTER_ALPHA = 0.5F;
     /** 只对本地玩家渲染（他人 Curios 数据客户端不可靠）。 */
     private static final boolean ONLY_LOCAL = true;
     /** 异常日志限频间隔（tick）。 */
@@ -314,33 +332,81 @@ public final class OrbitAuraClient {
         }
     }
 
+    /**
+     * 终末之环式样：竖直大圆环（垂直于地面）+ 中心发光光球 + 放射光芒线。
+     * 全部用 {@code RenderType.lines()} 线条建模，不使用粒子。
+     */
     private static void renderRing(PoseStack pose, MultiBufferSource.BufferSource buffers,
                                    Vec3 cam, Vec3 center, Vec3 facing,
                                    double radius, Form form) {
         Vec3[] basis = ringBasis(facing);
         VertexConsumer consumer = buffers.getBuffer(RenderType.lines());
-        // 三线束：中心亮线 + 两侧稍淡线，半径各偏移一点 → 视觉上成粗环
+        pose.pushPose();
+        pose.translate(center.x - cam.x, center.y - cam.y, center.z - cam.z);
+
+        // 1) 主环：三线束（中心亮线 + 两侧稍淡线），半径微偏移 → 视觉成粗壮发光环
         for (int pass = 0; pass < LINE_PASSES; pass++) {
             float a = pass == 1 ? 1.0F : 0.45F;
             double r = radius + (pass - 1) * LINE_SPREAD;
-            pose.pushPose();
-            pose.translate(center.x - cam.x, center.y - cam.y, center.z - cam.z);
-            for (int i = 0; i < RING_SEGMENTS; i++) {
-                double a0 = (Math.PI * 2.0D * i) / RING_SEGMENTS;
-                double a1 = (Math.PI * 2.0D * (i + 1)) / RING_SEGMENTS;
-                Vec3 p0 = ringPoint(basis, r, a0);
-                Vec3 p1 = ringPoint(basis, r, a1);
-                consumer.vertex(pose.last().pose(), (float) p0.x, (float) p0.y, (float) p0.z)
-                        .color(form.r, form.g, form.b, a)
-                        .normal(0.0F, 1.0F, 0.0F)
-                        .endVertex();
-                consumer.vertex(pose.last().pose(), (float) p1.x, (float) p1.y, (float) p1.z)
-                        .color(form.r, form.g, form.b, a)
-                        .normal(0.0F, 1.0F, 0.0F)
-                        .endVertex();
-            }
-            pose.popPose();
+            drawCircle(consumer, pose, basis, r, form.r, form.g, form.b, a);
         }
+
+        // 2) 中心光球：同心光环，内圈偏白（发光核心）、外圈渐变为形态色
+        double core = radius * CORE_FRAC;
+        for (int pass = 0; pass < CORE_RINGS; pass++) {
+            double r = core * (pass + 1.0D) / CORE_RINGS;
+            float a = 1.0F - pass * 0.26F;          // 越外越淡
+            float m = 1.0F - pass * 0.34F;          // 混合白度的权重：内白外色
+            float cr = blend(form.r, m);
+            float cg = blend(form.g, m);
+            float cb = blend(form.b, m);
+            drawCircle(consumer, pose, basis, r, cr, cg, cb, a);
+        }
+
+        // 3) 放射光芒线：竖直环平面内从核缘向外放射（0=正上，8 条含斜角）
+        for (int ray = 0; ray < RAYS; ray++) {
+            double ang = (Math.PI * 2.0D * ray) / RAYS;
+            double rIn = core * 0.6D;                    // 核缘内侧起点
+            double rOut = radius * SPIKE_SCALE;          // 外伸终点（越过环）
+            Vec3 p0 = ringPoint(basis, rIn, ang);
+            Vec3 p1 = ringPoint(basis, radius, ang);
+            Vec3 p2 = ringPoint(basis, rOut, ang);
+            // 内段（核缘→环）：亮、偏白
+            float mi = 0.35F;
+            line(consumer, pose, p0, p1, blend(form.r, mi), blend(form.g, mi), blend(form.b, mi), SPIKE_INNER_ALPHA);
+            // 外段（环→外伸）：形态色、稍淡
+            line(consumer, pose, p1, p2, form.r, form.g, form.b, SPIKE_OUTER_ALPHA);
+        }
+
+        pose.popPose();
+    }
+
+    /** 在竖直环平面上画一整圈细线。 */
+    private static void drawCircle(VertexConsumer consumer, PoseStack pose, Vec3[] basis,
+                                   double radius, float r, float g, float b, float a) {
+        for (int i = 0; i < RING_SEGMENTS; i++) {
+            double a0 = (Math.PI * 2.0D * i) / RING_SEGMENTS;
+            double a1 = (Math.PI * 2.0D * (i + 1)) / RING_SEGMENTS;
+            line(consumer, pose, ringPoint(basis, radius, a0), ringPoint(basis, radius, a1), r, g, b, a);
+        }
+    }
+
+    /** 画一条线（POSITION_COLOR_NORMAL，需带法线）。 */
+    private static void line(VertexConsumer consumer, PoseStack pose, Vec3 from, Vec3 to,
+                             float r, float g, float b, float a) {
+        consumer.vertex(pose.last().pose(), (float) from.x, (float) from.y, (float) from.z)
+                .color(r, g, b, a)
+                .normal(0.0F, 1.0F, 0.0F)
+                .endVertex();
+        consumer.vertex(pose.last().pose(), (float) to.x, (float) to.y, (float) to.z)
+                .color(r, g, b, a)
+                .normal(0.0F, 1.0F, 0.0F)
+                .endVertex();
+    }
+
+    /** 颜色按权重 m 向白色混合（m=0 → 纯色，m=1 → 纯白）。 */
+    private static float blend(float channel, float m) {
+        return channel + (1.0F - channel) * m;
     }
 
     private static Vec3 ringPoint(Vec3[] basis, double radius, double angle) {
