@@ -10,6 +10,8 @@ public final class CuriosEffectsState {
 
     public static final String TAG_RESPAWN_TOGGLE = "divinebeast.respawn_toggle";
     public static final String TAG_REDEMPTION_MARK = "divinebeast.redemption_mark";
+    /** X 键：真者祂「神行」移速加成开关（默认开启） */
+    public static final String TAG_HTRUE_SPEED_TOGGLE = "divinebeast.htrue_speed_toggle";
 
     private CuriosEffectsState() {
     }
@@ -22,6 +24,16 @@ public final class CuriosEffectsState {
 
     public static void setRespawnToggle(Player player, boolean value) {
         player.getPersistentData().putBoolean(TAG_RESPAWN_TOGGLE, value);
+    }
+
+    /** 真者祂「神行」移速加成：默认开启 */
+    public static boolean htrueSpeedToggle(Player player) {
+        return !player.getPersistentData().contains(TAG_HTRUE_SPEED_TOGGLE)
+                || player.getPersistentData().getBoolean(TAG_HTRUE_SPEED_TOGGLE);
+    }
+
+    public static void setHtrueSpeedToggle(Player player, boolean value) {
+        player.getPersistentData().putBoolean(TAG_HTRUE_SPEED_TOGGLE, value);
     }
 
     public static boolean hasRedemptionMark(net.minecraft.world.entity.LivingEntity entity) {

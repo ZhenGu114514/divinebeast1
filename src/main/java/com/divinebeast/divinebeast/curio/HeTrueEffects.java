@@ -1,6 +1,7 @@
 package com.divinebeast.divinebeast.curio;
 
 import com.divinebeast.divinebeast.item.ModItems;
+import com.divinebeast.divinebeast.net.CuriosEffectsState;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -47,6 +48,14 @@ public final class HeTrueEffects {
     private static final UUID ATTACK_SPEED_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b3");
     private static final UUID KNOCKBACK_RES_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b4");
     private static final UUID MAX_HEALTH_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b5");
+    private static final UUID FLYING_SPEED_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b6");
+    /** 万藏：动态通用(curio)槽修饰符 UUID */
+    private static final UUID CURIO_HOARD_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b7");
+    /** 万藏基准：99 + 已装通用饰品数 */
+    private static final int CURIO_CAP = 3000;
+    /** 旧伤：同一目标伤害叠加记忆（attacker → victim → 上次造成伤害） */
+    private static final java.util.Map<java.util.UUID, java.util.Map<java.util.UUID, Float>> OLD_WOUNDS =
+            new java.util.HashMap<>();
 
     /** 天罚追加真伤防递归标记 */
     private static boolean applyingTrueDamage = false;
@@ -95,6 +104,8 @@ public final class HeTrueEffects {
             return;
         }
         ACTIVE.add(player.getUUID());
+        // X 键开关：神行 行/飞/游 移速加成（默认开，见 CuriosEffectsState）
+        boolean strideSpeed = CuriosEffectsState.htrueSpeedToggle(player);
         // ---- 1 太初 / 17 归墟：虚空拉回（伤害免疫在 onLivingDamage）----
         if (player.getY() < player.level().getMinBuildHeight() - 4) {
             player.teleportTo(player.getX(), player.level().getMinBuildHeight() + 4, player.getZ());
@@ -153,14 +164,25 @@ public final class HeTrueEffects {
         if (player.getFoodData().getSaturationLevel() < 10.0F) {
             player.getFoodData().setSaturation(10.0F);
         }
-        // ---- 8 神能 / 12 神行 / 6 磐石 / 23 无量之躯：属性强化（幂等覆盖）----
+        // ---- 8 神能 / 12 神行（行/飞/泳同速）/ 6 磐石 / 23 无量之躯：属性强化（幂等覆盖）----
         ensureAttribute(player, Attributes.ATTACK_DAMAGE, DAMAGE_MOD, "divinebeast_he_true_dmg", 5000.0D);
         ensureAttribute(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_MOD, "divinebeast_he_true_atk_speed", 60.0D);
-        ensureAttribute(player, Attributes.MOVEMENT_SPEED, SPEED_MOD, "divinebeast_he_true_speed", 2.4D);
+        // 行走 / 飞行 使用同一移速加成（游泳沿用 MOVEMENT_SPEED，同样受益）；X 键关闭时不维持并回收
+        if (strideSpeed) {
+            ensureAttribute(player, Attributes.MOVEMENT_SPEED, SPEED_MOD, "divinebeast_he_true_speed", 2.4D);
+            ensureAttribute(player, Attributes.FLYING_SPEED, FLYING_SPEED_MOD, "divinebeast_he_true_fly_speed", 2.4D);
+        } else {
+            removeAttributeModifier(player, Attributes.MOVEMENT_SPEED, SPEED_MOD);
+            removeAttributeModifier(player, Attributes.FLYING_SPEED, FLYING_SPEED_MOD);
+        }
         ensureAttribute(player, Attributes.KNOCKBACK_RESISTANCE, KNOCKBACK_RES_MOD,
                 "divinebeast_he_true_kb", 1.0D);
         ensureAttribute(player, Attributes.MAX_HEALTH, MAX_HEALTH_MOD,
                 "divinebeast_he_true_maxhp", 2000.0D);
+        // 蹈水履火：可于水面与岩浆表面行走（不深潜/不飞行时生效）
+        walkOnLiquids(player);
+        // 万藏：动态通用(curio)槽 = 99 + 已装通用饰品件数
+        syncCurioHoard(player);
 
         if (player.tickCount % 20 != 0) {
             return;
@@ -211,6 +233,43 @@ public final class HeTrueEffects {
         }
     }
 
+    /** 按 UUID 移除属性修饰符（不存在时无副作用）。 */
+    private static void removeAttributeModifier(Player player,
+                                                net.minecraft.world.entity.ai.attributes.Attribute attribute,
+                                                UUID uuid) {
+        AttributeInstance instance = player.getAttribute(attribute);
+        if (instance != null) {
+            instance.removeModifier(uuid);
+        }
+    }
+
+    // ==================================================================
+    // 76 旧伤：对同一目标的伤害叠加
+    // ==================================================================
+
+    /** 读取上次对该目标造成的伤害（无则 0）。 */
+    private static float oldWound(Player attacker, LivingEntity victim) {
+        java.util.Map<java.util.UUID, Float> perTarget = OLD_WOUNDS.get(attacker.getUUID());
+        if (perTarget == null) {
+            return 0.0F;
+        }
+        Float last = perTarget.get(victim.getUUID());
+        return last == null ? 0.0F : last;
+    }
+
+    /** 记录本次对该目标造成的伤害。 */
+    private static void rememberOldWound(Player attacker, LivingEntity victim, float amount) {
+        OLD_WOUNDS.computeIfAbsent(attacker.getUUID(), k -> new java.util.HashMap<>())
+                .put(victim.getUUID(), amount);
+    }
+
+    /** 目标死亡（或被移除形态）后清空其旧伤记忆。 */
+    private static void forgetVictim(java.util.UUID victimUuid) {
+        for (java.util.Map<java.util.UUID, Float> perTarget : OLD_WOUNDS.values()) {
+            perTarget.remove(victimUuid);
+        }
+    }
+
     /** 仅在增益不足时补发，避免频繁 addEffect 覆盖计时。 */
     private static void refreshBuff(Player player, net.minecraft.world.effect.MobEffect effect,
                                     int amplifier, int ticks) {
@@ -220,9 +279,81 @@ public final class HeTrueEffects {
         }
     }
 
+    /**
+     * 蹈水履火：在水面或岩浆表面“站立行走”。
+     * 逻辑：脚部位于对应液体时，只要玩家未潜行下潜、也未主动飞行，
+     * 就把向下运动抵消并把脚部托回液面；潜行或飞行时正常下潜/飞行。
+     */
+    private static void walkOnLiquids(Player player) {
+        if (player.isSneaking() || player.getAbilities().flying) {
+            return;
+        }
+        net.minecraft.world.level.Level level = player.level();
+        net.minecraft.core.BlockPos feet = player.blockPosition();
+        net.minecraft.world.level.material.FluidState fluid = level.getFluidState(feet);
+        boolean onWater = fluid.is(net.minecraft.tags.FluidTags.WATER);
+        boolean onLava = fluid.is(net.minecraft.tags.FluidTags.LAVA);
+        if (!onWater && !onLava) {
+            return;
+        }
+        double surfaceY = feet.getY() + fluid.getHeight(level, feet);
+        // 已没入过深（如主动下潜超过约半格）则交还正常浮力，避免强行抬升卡墙
+        if (player.getY() < surfaceY - 0.45D) {
+            return;
+        }
+        net.minecraft.world.phys.Vec3 motion = player.getDeltaMovement();
+        if (player.getY() < surfaceY) {
+            // 托回液面
+            double lift = Math.min(0.2D, surfaceY - player.getY());
+            player.setDeltaMovement(motion.x, Math.max(motion.y, lift), motion.z);
+        } else if (motion.y < 0.0D) {
+            // 抵消下沉，实现站立行走
+            player.setDeltaMovement(motion.x, 0.0D, motion.z);
+        }
+    }
+
+    /**
+     * 万藏：通用(curio)槽临时数量 = 99 + 当前已装入通用槽的饰品件数。
+     * 无状态自愈式（同 CuriosEffects#syncOneSlot）：每个服务端 tick 用同一 UUID
+     * 幂等覆盖应用当前目标值，不依赖内存记忆，因此跨维度/重生后 transient 修饰符
+     * 被 Curios 清除时，下个 tick 会自动补回。目标为 0 时无条件移除（无副作用）。
+     */
+    private static void syncCurioHoard(Player player) {
+        java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
+                top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).resolve();
+        if (optional.isEmpty()) {
+            return;
+        }
+        top.theillusivec4.curios.api.type.capability.ICuriosItemHandler handler = optional.get();
+        // 若实体尚未分配通用槽（entities/player.json 缺 curio），则本效果无意义
+        java.util.Optional<top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler> shOpt =
+                handler.getStacksHandler("curio");
+        if (shOpt.isEmpty()) {
+            return;
+        }
+        top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler stacks =
+                shOpt.get().getStacks();
+        int worn = 0;
+        for (int i = 0; i < stacks.getSlots(); i++) {
+            if (!stacks.getStackInSlot(i).isEmpty()) {
+                worn++;
+            }
+        }
+        int target = Math.min(CURIO_CAP, 99 + worn);
+        com.google.common.collect.Multimap<String, AttributeModifier> map =
+                com.google.common.collect.LinkedHashMultimap.create();
+        map.put("curio", new AttributeModifier(CURIO_HOARD_MOD, "divinebeast_he_true_curio",
+                target, AttributeModifier.Operation.ADDITION));
+        if (target > 0) {
+            handler.addTransientSlotModifiers(map); // 同一 UUID 幂等覆盖
+        } else {
+            handler.removeSlotModifiers(map); // modifier 不存在时无副作用
+        }
+    }
+
     private static void removeMods(Player player) {
         for (UUID uuid : new UUID[]{DAMAGE_MOD, SPEED_MOD, ATTACK_SPEED_MOD, KNOCKBACK_RES_MOD,
-                MAX_HEALTH_MOD}) {
+                MAX_HEALTH_MOD, FLYING_SPEED_MOD}) {
             AttributeInstance instance = player.getAttribute(Attributes.ATTACK_DAMAGE);
             if (instance != null) {
                 instance.removeModifier(uuid);
@@ -240,6 +371,10 @@ public final class HeTrueEffects {
                 instance.removeModifier(uuid);
             }
             instance = player.getAttribute(Attributes.MAX_HEALTH);
+            if (instance != null) {
+                instance.removeModifier(uuid);
+            }
+            instance = player.getAttribute(Attributes.FLYING_SPEED);
             if (instance != null) {
                 instance.removeModifier(uuid);
             }
@@ -262,6 +397,17 @@ public final class HeTrueEffects {
         }
         player.setInvisible(false);
         player.setAbsorptionAmount(0.0F);
+        // 回收万藏：移除动态通用槽修饰符
+        OLD_WOUNDS.remove(player.getUUID()); // 离开形态：清空自身旧伤记忆
+        java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
+                top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).resolve();
+        if (optional.isPresent()) {
+            com.google.common.collect.Multimap<String, AttributeModifier> map =
+                    com.google.common.collect.LinkedHashMultimap.create();
+            map.put("curio", new AttributeModifier(CURIO_HOARD_MOD, "divinebeast_he_true_curio",
+                    0.0D, AttributeModifier.Operation.ADDITION));
+            optional.get().removeSlotModifiers(map);
+        }
     }
 
     private static void repairAll(Player player) {
@@ -279,7 +425,7 @@ public final class HeTrueEffects {
     // 事件
     // ==================================================================
 
-    /** 1 太初（含 17 归墟 的环境伤害）/ 9 天罚 / 11 血之回响 */
+    /** 1 太初（含 17 归墟 的环境伤害）/ 9 天罚 / 11 血之回响 / 76 旧伤 */
     private static void onLivingDamage(LivingDamageEvent event) {
         if (event.getEntity().level().isClientSide || applyingTrueDamage) {
             return;
@@ -303,9 +449,16 @@ public final class HeTrueEffects {
             return;
         }
         float amount = event.getAmount();
-        if (amount <= 0.0F) {
+        if (event.isCanceled() || amount <= 0.0F) {
             return;
         }
+        // 76 旧伤：本次伤害 += 上次对该生物造成的伤害（同 attacker→victim 记忆；目标死亡即清零）
+        float last = oldWound(attacker, victim);
+        if (last > 0.0F) {
+            amount += last;
+            event.setAmount(amount);
+        }
+        rememberOldWound(attacker, victim, amount);
         // 11 血之回响：全额回血
         attacker.heal(amount);
         // 圣火灼烧 + 迟滞领域：命中目标着火并减速（仅对敌对生物）
@@ -322,7 +475,7 @@ public final class HeTrueEffects {
         }
     }
 
-    /** 2 不朽：死亡无效 */
+    /** 2 不朽：死亡无效；同时清除 76 旧伤 对已死亡目标的记忆 */
     private static void onDeath(LivingDeathEvent event) {
         if (event.getEntity().level().isClientSide) {
             return;
@@ -333,7 +486,10 @@ public final class HeTrueEffects {
             player.setAbsorptionAmount(40.0F);
             player.setInvulnerable(false);
             player.removeAllEffects();
+            return;
         }
+        // 其它生物死亡：遗忘所有玩家对它的旧伤记忆（换目标/目标死亡即归零）
+        forgetVictim(event.getEntity().getUUID());
     }
 
     /** 5 净世：负面效果禁止上身 */

@@ -30,6 +30,13 @@ public class DivineBeastItem extends Item {
 
     /** 真者『祂』的正面权能数量（lore/effect 文案行数与此一致） */
     private static final int HE_TRUE_EFFECT_COUNT = 99;
+    /** 真者『祂』tooltip 每页显示的权能条数 */
+    private static final int HE_TRUE_PAGE_SIZE = 20;
+    /** 翻页间隔（毫秒）：每 2 秒轮换到下一页 */
+    private static final long HE_TRUE_PAGE_INTERVAL_MS = 2000L;
+    /** 总页数（99 条 / 每页 20 条 → 5 页） */
+    private static final int HE_TRUE_PAGE_TOTAL =
+            (HE_TRUE_EFFECT_COUNT + HE_TRUE_PAGE_SIZE - 1) / HE_TRUE_PAGE_SIZE;
 
     public DivineBeastItem(Properties properties) {
         super(properties);
@@ -46,24 +53,33 @@ public class DivineBeastItem extends Item {
 
         // 真者『祂』专属：正常只显示诗词/叙事文本，按住 Shift 显示效果；
         // 每行颜色随秒流动（彩虹渐变，每秒整体偏移）。
+        // 99 项权能过长：每次只显示 20 项，每 2 秒轮换到下一页，到底后回到首页。
         if (stack.is(ModItems.HE_TRUE.get())) {
             if (level != null && level.isClientSide) {
                 boolean shift = net.minecraft.client.gui.screens.Screen.hasShiftDown();
                 long sec = System.currentTimeMillis() / 1000L;
+                int page = (int) ((System.currentTimeMillis() / HE_TRUE_PAGE_INTERVAL_MS)
+                        % HE_TRUE_PAGE_TOTAL);
+                int from = page * HE_TRUE_PAGE_SIZE + 1;
+                int to = Math.min(HE_TRUE_EFFECT_COUNT, from + HE_TRUE_PAGE_SIZE - 1);
                 if (!shift) {
-                    // 总起文本 + 每项权能一段诗词（每句一行、逐句取色）
+                    // 总起文本 + 当前页 20 项权能各一段诗词（每句一行、逐句取色）
                     addHueLine(tooltip, "item.divinebeast.he_true.lore", 0, sec, true);
                     int row = 1;
-                    for (int i = 1; i <= HE_TRUE_EFFECT_COUNT; i++) {
+                    for (int i = from; i <= to; i++) {
                         row = addPoemLines(tooltip, "item.divinebeast.he_true.lore_" + i, row, sec);
                     }
                     addHueLine(tooltip, "divinebeast.tooltip.shift_hint", row, sec, false);
                 } else {
                     int row = 0;
-                    for (int i = 1; i <= HE_TRUE_EFFECT_COUNT; i++) {
+                    for (int i = from; i <= to; i++) {
                         row = addPoemLines(tooltip, "item.divinebeast.he_true.effect_" + i, row, sec);
                     }
                 }
+                // 页码提示：第 x/5 页，每 2 秒自动轮换
+                tooltip.add(Component.translatable("divinebeast.tooltip.he_true_page",
+                        page + 1, HE_TRUE_PAGE_TOTAL)
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
             } else {
                 // 服务端等非渲染场景：普通灰色文本兜底，不引客户端类
                 tooltip.add(Component.translatable("item.divinebeast.he_true.desc")

@@ -38,6 +38,10 @@ public final class Networking {
                 AscensionChoiceMessage::encode,
                 AscensionChoiceMessage::decode,
                 AscensionChoiceMessage::handle);
+        CHANNEL.registerMessage(nextId++, ToggleSpeedMessage.class,
+                ToggleSpeedMessage::encode,
+                ToggleSpeedMessage::decode,
+                ToggleSpeedMessage::handle);
     }
 
     public static void sendToServer(Object message) {
