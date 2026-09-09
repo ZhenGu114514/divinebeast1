@@ -31,10 +31,10 @@ public class DivineBeastItem extends Item {
     /** 真者『祂』的正面权能数量（lore/effect 文案行数与此一致） */
     private static final int HE_TRUE_EFFECT_COUNT = 99;
     /** 真者『祂』tooltip 每页显示的权能条数 */
-    private static final int HE_TRUE_PAGE_SIZE = 20;
+    private static final int HE_TRUE_PAGE_SIZE = 15;
     /** 翻页间隔（毫秒）：每 2 秒轮换到下一页 */
     private static final long HE_TRUE_PAGE_INTERVAL_MS = 2000L;
-    /** 总页数（99 条 / 每页 20 条 → 5 页） */
+    /** 总页数（99 条 / 每页 15 条 → 7 页） */
     private static final int HE_TRUE_PAGE_TOTAL =
             (HE_TRUE_EFFECT_COUNT + HE_TRUE_PAGE_SIZE - 1) / HE_TRUE_PAGE_SIZE;
 

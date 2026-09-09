@@ -54,6 +54,10 @@ public class DivineBeastMod {
                 () -> () -> ClientKeybinds.init(modBus));
         DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> AutoCombatClient.init());
+        DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> () -> com.divinebeast.divinebeast.client.InventoryCopyClient.init());
+        // FTB Quests 可选前置：装有时把内置任务书章节注入服务端 config（不引用 FTB 类）
+        com.divinebeast.divinebeast.integration.FTBQuestsCompat.registerIfPresent();
 
         if (CompatChecks.curiosLoaded()) {
             // 只有走到这里才会真正加载这几个类（内含 Curios API 引用）

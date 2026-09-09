@@ -49,13 +49,17 @@ public final class HeTrueEffects {
     private static final UUID KNOCKBACK_RES_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b4");
     private static final UUID MAX_HEALTH_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b5");
     private static final UUID FLYING_SPEED_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b6");
-    /** 万藏：动态通用(curio)槽修饰符 UUID */
+    /** 万藏：通用(curio)槽固定修饰符 UUID */
     private static final UUID CURIO_HOARD_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b7");
-    /** 万藏基准：99 + 已装通用饰品数 */
-    private static final int CURIO_CAP = 3000;
+    /** 神行 X 开关开启时，飞行能力速度放大系数（相对玩家原 flyingSpeed） */
+    private static final double STRIDE_FLY_BOOST = 25.0D;
+    /** 记录每个玩家原始的 Abilities#flyingSpeed，用于 X 关闭/脱离形态时还原 */
+    private static final java.util.Map<java.util.UUID, Float> STRIDE_ORIG_FLY = new java.util.HashMap<>();
     /** 旧伤：同一目标伤害叠加记忆（attacker → victim → 上次造成伤害） */
     private static final java.util.Map<java.util.UUID, java.util.Map<java.util.UUID, Float>> OLD_WOUNDS =
             new java.util.HashMap<>();
+    /** 太初：玩家 → [自然秒 id, 该秒已累计伤害]，每秒最多 1 点 */
+    private static final java.util.Map<java.util.UUID, double[]> SEC_DAMAGE = new java.util.HashMap<>();
 
     /** 天罚追加真伤防递归标记 */
     private static boolean applyingTrueDamage = false;
@@ -167,13 +171,17 @@ public final class HeTrueEffects {
         // ---- 8 神能 / 12 神行（行/飞/泳同速）/ 6 磐石 / 23 无量之躯：属性强化（幂等覆盖）----
         ensureAttribute(player, Attributes.ATTACK_DAMAGE, DAMAGE_MOD, "divinebeast_he_true_dmg", 5000.0D);
         ensureAttribute(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_MOD, "divinebeast_he_true_atk_speed", 60.0D);
-        // 行走 / 飞行 使用同一移速加成（游泳沿用 MOVEMENT_SPEED，同样受益）；X 键关闭时不维持并回收
+        // 行走 / 飞行 / 游泳移速：X 键关闭时不维持并回收。
+        // 行走/游泳读 MOVEMENT_SPEED；创造式飞行的水平速度由 Abilities#flyingSpeed 提供，
+        // 因此开关须同时改写能力字段并通过 onUpdateAbilities 同步（否则飞行吃不到加成）。
         if (strideSpeed) {
             ensureAttribute(player, Attributes.MOVEMENT_SPEED, SPEED_MOD, "divinebeast_he_true_speed", 2.4D);
             ensureAttribute(player, Attributes.FLYING_SPEED, FLYING_SPEED_MOD, "divinebeast_he_true_fly_speed", 2.4D);
+            applyStrideAbilities(player, true);
         } else {
             removeAttributeModifier(player, Attributes.MOVEMENT_SPEED, SPEED_MOD);
             removeAttributeModifier(player, Attributes.FLYING_SPEED, FLYING_SPEED_MOD);
+            applyStrideAbilities(player, false);
         }
         ensureAttribute(player, Attributes.KNOCKBACK_RESISTANCE, KNOCKBACK_RES_MOD,
                 "divinebeast_he_true_kb", 1.0D);
@@ -240,6 +248,28 @@ public final class HeTrueEffects {
         AttributeInstance instance = player.getAttribute(attribute);
         if (instance != null) {
             instance.removeModifier(uuid);
+        }
+    }
+
+    /**
+     * 神行移速开关对「飞行能力」的同步：1.20.1 玩家创造式飞行水平速度由
+     * {@code Abilities#flyingSpeed} 提供（generic.flying_speed 属性对玩家无效），
+     * 因此 X 开时把能力值放大 STRIDE_FLY_BOOST 倍（与行走 +2.4 同为约 25 倍提升），
+     * 关时还原为原始值，并用 onUpdateAbilities 同步客户端。仅在值变化时发送。
+     */
+    private static void applyStrideAbilities(Player player, boolean on) {
+        if (!(player instanceof ServerPlayer sp)) {
+            return;
+        }
+        float orig = STRIDE_ORIG_FLY.computeIfAbsent(sp.getUUID(),
+                k -> sp.getAbilities().getFlyingSpeed());
+        float target = (float) (orig * (on ? STRIDE_FLY_BOOST : 1.0D));
+        if (Math.abs(sp.getAbilities().getFlyingSpeed() - target) > 1e-4F) {
+            sp.getAbilities().setFlyingSpeed(target);
+            sp.onUpdateAbilities();
+        }
+        if (!on) {
+            STRIDE_ORIG_FLY.remove(sp.getUUID());
         }
     }
 
@@ -313,10 +343,10 @@ public final class HeTrueEffects {
     }
 
     /**
-     * 万藏：通用(curio)槽临时数量 = 99 + 当前已装入通用槽的饰品件数。
+     * 万藏：固定为通用(curio)槽 +99 个（不再随已装件数增长）。
      * 无状态自愈式（同 CuriosEffects#syncOneSlot）：每个服务端 tick 用同一 UUID
-     * 幂等覆盖应用当前目标值，不依赖内存记忆，因此跨维度/重生后 transient 修饰符
-     * 被 Curios 清除时，下个 tick 会自动补回。目标为 0 时无条件移除（无副作用）。
+     * 幂等覆盖应用 99，不依赖内存记忆，因此跨维度/重生后 transient 修饰符
+     * 被 Curios 清除时，下个 tick 会自动补回。
      */
     private static void syncCurioHoard(Player player) {
         java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
@@ -331,27 +361,16 @@ public final class HeTrueEffects {
         if (shOpt.isEmpty()) {
             return;
         }
-        top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler stacks =
-                shOpt.get().getStacks();
-        int worn = 0;
-        for (int i = 0; i < stacks.getSlots(); i++) {
-            if (!stacks.getStackInSlot(i).isEmpty()) {
-                worn++;
-            }
-        }
-        int target = Math.min(CURIO_CAP, 99 + worn);
+        int target = 99;
         com.google.common.collect.Multimap<String, AttributeModifier> map =
                 com.google.common.collect.LinkedHashMultimap.create();
         map.put("curio", new AttributeModifier(CURIO_HOARD_MOD, "divinebeast_he_true_curio",
                 target, AttributeModifier.Operation.ADDITION));
-        if (target > 0) {
-            handler.addTransientSlotModifiers(map); // 同一 UUID 幂等覆盖
-        } else {
-            handler.removeSlotModifiers(map); // modifier 不存在时无副作用
-        }
+        handler.addTransientSlotModifiers(map); // 同一 UUID 幂等覆盖
     }
 
     private static void removeMods(Player player) {
+        applyStrideAbilities(player, false); // 还原被放大的飞行能力值
         for (UUID uuid : new UUID[]{DAMAGE_MOD, SPEED_MOD, ATTACK_SPEED_MOD, KNOCKBACK_RES_MOD,
                 MAX_HEALTH_MOD, FLYING_SPEED_MOD}) {
             AttributeInstance instance = player.getAttribute(Attributes.ATTACK_DAMAGE);
@@ -399,6 +418,7 @@ public final class HeTrueEffects {
         player.setAbsorptionAmount(0.0F);
         // 回收万藏：移除动态通用槽修饰符
         OLD_WOUNDS.remove(player.getUUID()); // 离开形态：清空自身旧伤记忆
+        SEC_DAMAGE.remove(player.getUUID()); // 太初每秒伤害额度随形态结束重置
         java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
                 top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isPresent()) {
@@ -431,9 +451,23 @@ public final class HeTrueEffects {
             return;
         }
         LivingEntity victim = event.getEntity();
-        // 太初：佩戴者不受任何伤害
+        // 太初：每个自然秒内自身累计最多受到 1 点伤害，同秒内多余伤害全部无视
         if (victim instanceof Player player && wearing(player)) {
-            event.setCanceled(true);
+            long second = player.level().getGameTime() / 20L;
+            double[] budget = SEC_DAMAGE.get(player.getUUID());
+            if (budget == null || budget[0] != second) {
+                budget = new double[]{second, 0.0D};
+                SEC_DAMAGE.put(player.getUUID(), budget);
+            }
+            double used = budget[1];
+            if (used >= 1.0D) {
+                event.setCanceled(true);
+            } else {
+                double left = 1.0D - used;
+                double amount = Math.min(event.getAmount(), left);
+                event.setAmount((float) amount);
+                budget[1] = used + amount;
+            }
             return;
         }
         // 攻击来源解析

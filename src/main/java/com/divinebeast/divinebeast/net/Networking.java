@@ -42,6 +42,10 @@ public final class Networking {
                 ToggleSpeedMessage::encode,
                 ToggleSpeedMessage::decode,
                 ToggleSpeedMessage::handle);
+        CHANNEL.registerMessage(nextId++, ItemCopyMessage.class,
+                ItemCopyMessage::encode,
+                ItemCopyMessage::decode,
+                ItemCopyMessage::handle);
     }
 
     public static void sendToServer(Object message) {

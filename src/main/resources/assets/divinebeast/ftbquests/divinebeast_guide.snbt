@@ -1,0 +1,431 @@
+{
+	default_hide_dependency_lines: false
+	default_quest_shape: ""
+	filename: "divinebeast_guide"
+	group: ""
+	icon: {
+		Count: 1
+		id: "divinebeast:deity"
+	}
+	id: "1D1CEA57E0000001"
+	order_index: 1000
+	quest_links: [ ]
+	quests: [
+		{
+			description: ["{\"translate\":\"divinebeast.ftb.overview\"}"]
+			id: "1D1CEA57E0000100"
+			optional: true
+			shape: "square"
+			size: 1.5d
+			title: "{\"translate\":\"divinebeast.ftb.overview.task\"}"
+			x: 0.0d
+			y: 0.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.deity\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.deity\"}"
+			]
+			id: "1D1CEA57E0000200"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000201"
+				item: "divinebeast:deity"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.deity\"}"
+			x: 2.0d
+			y: 0.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.beast\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.beast\"}"
+			]
+			id: "1D1CEA57E0000300"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000301"
+				item: "divinebeast:beast"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.beast\"}"
+			x: 4.0d
+			y: 0.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.nonexist_nonexist\"}"
+				"{\"translate\":\"item.divinebeast.nonexist_nonexist.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.nonexist_nonexist\"}"
+			]
+			id: "1D1CEA57E0000400"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000401"
+				item: "divinebeast:nonexist_nonexist"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.nonexist_nonexist\"}"
+			x: 0.0d
+			y: 2.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.nonexist_exist\"}"
+				"{\"translate\":\"item.divinebeast.nonexist_exist.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.nonexist_exist\"}"
+			]
+			id: "1D1CEA57E0000500"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000501"
+				item: "divinebeast:nonexist_exist"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.nonexist_exist\"}"
+			x: 2.0d
+			y: 2.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.maybe_exist\"}"
+				"{\"translate\":\"item.divinebeast.maybe_exist.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.maybe_exist\"}"
+			]
+			id: "1D1CEA57E0000600"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000601"
+				item: "divinebeast:maybe_exist"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.maybe_exist\"}"
+			x: 4.0d
+			y: 2.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.exist_exist\"}"
+				"{\"translate\":\"item.divinebeast.exist_exist.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.exist_exist\"}"
+			]
+			id: "1D1CEA57E0000700"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000701"
+				item: "divinebeast:exist_exist"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.exist_exist\"}"
+			x: 6.0d
+			y: 2.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.impossible_nonexist\"}"
+				"{\"translate\":\"item.divinebeast.impossible_nonexist.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.impossible_nonexist\"}"
+			]
+			id: "1D1CEA57E0000800"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000801"
+				item: "divinebeast:impossible_nonexist"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.impossible_nonexist\"}"
+			x: 8.0d
+			y: 2.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.supreme\"}"
+				"{\"translate\":\"item.divinebeast.supreme.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.supreme\"}"
+			]
+			id: "1D1CEA57E0000900"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000901"
+				item: "divinebeast:supreme"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.supreme\"}"
+			x: 0.0d
+			y: 4.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.wisdom\"}"
+				"{\"translate\":\"item.divinebeast.wisdom.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.wisdom\"}"
+			]
+			id: "1D1CEA57E0000A00"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000A01"
+				item: "divinebeast:wisdom"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.wisdom\"}"
+			x: 2.0d
+			y: 4.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.life\"}"
+				"{\"translate\":\"item.divinebeast.life.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.life\"}"
+			]
+			id: "1D1CEA57E0000B00"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000B01"
+				item: "divinebeast:life"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.life\"}"
+			x: 4.0d
+			y: 4.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.chaos\"}"
+				"{\"translate\":\"item.divinebeast.chaos.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.chaos\"}"
+			]
+			id: "1D1CEA57E0000C00"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000C01"
+				item: "divinebeast:chaos"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.chaos\"}"
+			x: 6.0d
+			y: 4.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.self\"}"
+				"{\"translate\":\"item.divinebeast.self.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.self\"}"
+			]
+			id: "1D1CEA57E0000D00"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000D01"
+				item: "divinebeast:self"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.self\"}"
+			x: 8.0d
+			y: 4.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.devour\"}"
+				"{\"translate\":\"item.divinebeast.devour.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.devour\"}"
+			]
+			id: "1D1CEA57E0000E00"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000E01"
+				item: "divinebeast:devour"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.devour\"}"
+			x: 10.0d
+			y: 4.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.samsara\"}"
+				"{\"translate\":\"item.divinebeast.samsara.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.samsara\"}"
+			]
+			id: "1D1CEA57E0000F00"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0000F01"
+				item: "divinebeast:samsara"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.samsara\"}"
+			x: 12.0d
+			y: 4.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.he_first\"}"
+				"{\"translate\":\"item.divinebeast.he_first.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.he_first\"}"
+			]
+			id: "1D1CEA57E0001000"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001001"
+				item: "divinebeast:he_first"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.he_first\"}"
+			x: 0.0d
+			y: 6.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.perception\"}"
+				"{\"translate\":\"item.divinebeast.perception.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.perception\"}"
+			]
+			id: "1D1CEA57E0001100"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001101"
+				item: "divinebeast:perception"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.perception\"}"
+			x: 2.0d
+			y: 6.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.consciousness\"}"
+				"{\"translate\":\"item.divinebeast.consciousness.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.consciousness\"}"
+			]
+			id: "1D1CEA57E0001200"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001201"
+				item: "divinebeast:consciousness"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.consciousness\"}"
+			x: 4.0d
+			y: 6.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.rebellion\"}"
+				"{\"translate\":\"item.divinebeast.rebellion.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.rebellion\"}"
+			]
+			id: "1D1CEA57E0001300"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001301"
+				item: "divinebeast:rebellion"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.rebellion\"}"
+			x: 6.0d
+			y: 6.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.redemption\"}"
+				"{\"translate\":\"item.divinebeast.redemption.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.redemption\"}"
+			]
+			id: "1D1CEA57E0001400"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001401"
+				item: "divinebeast:redemption"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.redemption\"}"
+			x: 8.0d
+			y: 6.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.he_extreme\"}"
+				"{\"translate\":\"item.divinebeast.he_extreme.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.he_extreme\"}"
+			]
+			id: "1D1CEA57E0001500"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001501"
+				item: "divinebeast:he_extreme"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.he_extreme\"}"
+			x: 10.0d
+			y: 6.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.grief\"}"
+				"{\"translate\":\"item.divinebeast.grief.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.grief\"}"
+			]
+			id: "1D1CEA57E0001600"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001601"
+				item: "divinebeast:grief"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.grief\"}"
+			x: 12.0d
+			y: 6.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.pain\"}"
+				"{\"translate\":\"item.divinebeast.pain.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.pain\"}"
+			]
+			id: "1D1CEA57E0001700"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001701"
+				item: "divinebeast:pain"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.pain\"}"
+			x: 0.0d
+			y: 8.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.true_heart\"}"
+				"{\"translate\":\"item.divinebeast.true_heart.lore\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.true_heart\"}"
+			]
+			id: "1D1CEA57E0001800"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001801"
+				item: "divinebeast:true_heart"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.true_heart\"}"
+			x: 2.0d
+			y: 8.0d
+		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.effect.he_true\"}"
+				"{\"translate\":\"divinebeast.ftb.obtain.he_true\"}"
+			]
+			id: "1D1CEA57E0001900"
+			optional: true
+			tasks: [{
+				id: "1D1CEA57E0001901"
+				item: "divinebeast:he_true"
+				type: "item"
+			}]
+			title: "{\"translate\":\"item.divinebeast.he_true\"}"
+			x: 4.0d
+			y: 8.0d
+		}
+	]
+	title: "{\"translate\":\"divinebeast.ftb.chapter\"}"
+}
