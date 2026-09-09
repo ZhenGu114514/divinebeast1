@@ -285,7 +285,7 @@ public final class HeTrueEffects {
      * 就把向下运动抵消并把脚部托回液面；潜行或飞行时正常下潜/飞行。
      */
     private static void walkOnLiquids(Player player) {
-        if (player.isSneaking() || player.getAbilities().flying) {
+        if (player.isShiftKeyDown() || player.getAbilities().flying) {
             return;
         }
         net.minecraft.world.level.Level level = player.level();
