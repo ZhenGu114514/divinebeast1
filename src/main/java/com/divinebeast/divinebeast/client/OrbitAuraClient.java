@@ -411,7 +411,7 @@ public final class OrbitAuraClient {
         // 1) 主环：一条粗线 = 多道紧贴线束（THICK_PASSES 道，半径微偏移 → 视觉粗壮）
         for (int pass = 0; pass < THICK_PASSES; pass++) {
             double r = radius + (pass - (THICK_PASSES - 1) / 2.0D) * THICK_SPREAD;
-            float a = 1.0F - Math.abs(pass - (THICK_PASSES - 1) / 2.0D) * 0.12F;
+            float a = 1.0F - (float) (Math.abs(pass - (THICK_PASSES - 1) / 2.0D) * 0.12F);
             drawCircle(consumer, pose, basis, r, form.r, form.g, form.b, a);
         }
         // 2) 两条细线：主环两侧各一根细亮线（居中偏白，突出轮廓）
