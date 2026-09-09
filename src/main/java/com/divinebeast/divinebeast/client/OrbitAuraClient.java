@@ -54,15 +54,15 @@ public final class OrbitAuraClient {
     private static boolean visible = true;
 
     /** 圆心相对头部中心向后（脑后方向）的偏移（格）。 */
-    private static final double CENTER_BACK = 0.35D;
+    private static final double CENTER_BACK = 0.6D;
     /** 最内圈圆环半径（格）。 */
-    private static final double RING_BASE = 0.9D;
+    private static final double RING_BASE = 0.95D;
     /** 多形态共存时每层环的半径增量（格）。 */
-    private static final double RING_STEP = 0.16D;
-    /** 每圈叠加的细线层数（半径微偏移三线束，模拟更醒目的粗环）。 */
-    private static final int LINE_PASSES = 3;
-    /** 三线束相邻半径间距（格）。 */
-    private static final double LINE_SPREAD = 0.02D;
+    private static final double RING_STEP = 0.5D;
+    /** 每圈叠加的细线层数（半径微偏移多重线束，模拟更醒目的粗环）。 */
+    private static final int LINE_PASSES = 7;
+    /** 多重线束相邻半径间距（格），越大环越粗。 */
+    private static final double LINE_SPREAD = 0.04D;
     /** 圆环分段数（越大越圆）。 */
     private static final int RING_SEGMENTS = 96;
     /** 圆环中心高度（格，头部中心）。 */
@@ -350,10 +350,11 @@ public final class OrbitAuraClient {
         pose.pushPose();
         pose.translate(center.x - cam.x, center.y - cam.y, center.z - cam.z);
 
-        // 1) 主环：三线束（中心亮线 + 两侧稍淡线），半径微偏移 → 视觉成粗壮发光环
+        // 1) 主环：多重线束（中心亮线 + 两侧渐淡线），半径微偏移 → 视觉成粗壮发光环
+        int centerPass = LINE_PASSES / 2;
         for (int pass = 0; pass < LINE_PASSES; pass++) {
-            float a = pass == 1 ? 1.0F : 0.45F;
-            double r = radius + (pass - 1) * LINE_SPREAD;
+            float a = pass == centerPass ? 1.0F : (pass == centerPass - 1 || pass == centerPass + 1 ? 0.7F : 0.45F);
+            double r = radius + (pass - centerPass) * LINE_SPREAD;
             drawCircle(consumer, pose, basis, r, form.r, form.g, form.b, a);
         }
 
