@@ -67,7 +67,7 @@ public final class OrbitAuraClient {
     /** 证悟小环中心相对大环中心向上偏移（格）。 */
     private static final double SMALL_RING_UP = 0.25D;
     /** 证悟小环相对大环更向内（脑后偏移更小，即更靠近本体）。 */
-    private static final double SMALL_RING_BACK = 0.18D;
+    private static final double SMALL_RING_BACK = 0.38D;
     /** 每圈"粗线"叠加的细线层数（同半径微偏移 → 视觉成粗壮发光环带）。 */
     private static final int THICK_PASSES = 5;
     /** 粗线带相邻半径间距（格，越小越实心）。 */
