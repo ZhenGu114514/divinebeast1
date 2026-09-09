@@ -205,6 +205,24 @@ public final class BeastEffects {
         }
         renameBeastWhileSelf(player, stage);
 
+        // 救赎/本心 完全封印：收回『兽』/法则已施加的一切，之后不再作用
+        if (AscensionEffects.effectsDisabled(player)) {
+            FOOD_CAP.remove(player.getUUID());
+            if (SELF_CURSE_STACKS.remove(player.getUUID()) != null) {
+                clearAttackStacks(player, ATTACK_BONUS_SELF_CURSE);
+            }
+            if (SELF_LAW_STACKS.remove(player.getUUID()) != null) {
+                clearAttackStacks(player, SELF_LAW_ATTACK_MOD);
+            }
+            SUPREME_STACKS.remove(player.getUUID());
+            SUPREME_TIMER.remove(player.getUUID());
+            clearSelfStageAttributes(player);
+            player.setAbsorptionAmount(0.0F);
+            player.removeEffect(MobEffects.DAMAGE_BOOST);
+            player.removeEffect(MobEffects.ABSORPTION);
+            return;
+        }
+
         // ---------- 诅咒持续项 ----------
         if (stage == 1) {
             // 吞噬诅咒：生命上限 ≥10 时才触发
@@ -433,7 +451,8 @@ public final class BeastEffects {
         }
         LivingEntity victim = event.getEntity();
         Player attacker = attackingPlayer(event.getSource());
-        if (attacker == null || victim.is(attacker) || !wearingBeast(attacker)) {
+        if (attacker == null || victim.is(attacker) || !wearingBeast(attacker)
+                || AscensionEffects.effectsDisabled(attacker)) {
             return;
         }
         if (curseActive(attacker, 3) && attacker.level().getRandom().nextDouble() < 0.5D) {
@@ -460,7 +479,8 @@ public final class BeastEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (!(event.getEntity() instanceof Player player) || !wearingBeast(player)) {
+        if (!(event.getEntity() instanceof Player player) || !wearingBeast(player)
+                || AscensionEffects.effectsDisabled(player)) {
             return;
         }
         DamageSource source = event.getSource();
@@ -502,7 +522,8 @@ public final class BeastEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (!(event.getEntity() instanceof Player player) || !wearingBeast(player)) {
+        if (!(event.getEntity() instanceof Player player) || !wearingBeast(player)
+                || AscensionEffects.effectsDisabled(player)) {
             return;
         }
         if (curseActive(player, 2) && player.getMaxHealth() >= 10.0F) {
@@ -525,7 +546,8 @@ public final class BeastEffects {
         LivingEntity victim = event.getEntity();
 
         // ---------- 佩戴『兽』玩家作为受击方 ----------
-        if (victim instanceof Player victimPlayer && wearingBeast(victimPlayer)) {
+        if (victim instanceof Player victimPlayer && wearingBeast(victimPlayer)
+                && !AscensionEffects.effectsDisabled(victimPlayer)) {
             if (curseActive(victimPlayer, 6) && victimPlayer.getMaxHealth() >= 10.0F
                     && !victimPlayer.isDeadOrDying()
                     && event.getAmount() >= victimPlayer.getHealth()) {
@@ -542,7 +564,8 @@ public final class BeastEffects {
 
         // ---------- 佩戴『兽』玩家作为攻击方 ----------
         Player attacker = attackingPlayer(event.getSource());
-        if (attacker == null || victim.is(attacker) || !wearingBeast(attacker)) {
+        if (attacker == null || victim.is(attacker) || !wearingBeast(attacker)
+                || AscensionEffects.effectsDisabled(attacker)) {
             return;
         }
         int stage = stageOf(attacker);
@@ -674,7 +697,8 @@ public final class BeastEffects {
         LivingEntity dead = event.getEntity();
 
         // ---------- 佩戴『兽』者自身死亡 ----------
-        if (dead instanceof ServerPlayer serverPlayer && wearingBeast(serverPlayer)) {
+        if (dead instanceof ServerPlayer serverPlayer && wearingBeast(serverPlayer)
+                && !AscensionEffects.effectsDisabled(serverPlayer)) {
             int stage = stageOf(serverPlayer);
             // 轮回（法则）：消耗 1 层复活并刷新（本模组可刷新项 + 叠层拉满）
             if (lawWorn(serverPlayer, 6) && samsaraLayers(serverPlayer) > 0) {
@@ -710,7 +734,7 @@ public final class BeastEffects {
                 && projectile.getOwner() instanceof Player player) {
             killer = player;
         }
-        if (killer == null || !wearingBeast(killer)) {
+        if (killer == null || !wearingBeast(killer) || AscensionEffects.effectsDisabled(killer)) {
             return;
         }
         Float last = LAST_ATTACK_DAMAGE.get(killer.getUUID());
@@ -752,7 +776,8 @@ public final class BeastEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (event.getNewTarget() instanceof Player player && stageOf(player) == 2) {
+        if (event.getNewTarget() instanceof Player player && stageOf(player) == 2
+                && !AscensionEffects.effectsDisabled(player)) {
             event.setCanceled(true); // 拯救：不再优先攻击你
         }
     }

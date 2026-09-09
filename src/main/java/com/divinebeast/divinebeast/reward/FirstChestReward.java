@@ -20,12 +20,22 @@ import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 /**
  * 新手礼盒：每个玩家（每个存档）打开的第一个"箱子类容器"（箱子/陷阱箱/木桶/潜影盒/末影箱）
  * 会在其中生成 『祂』 与 『兽』 各一件；容器满时掉落在箱子前。仅服务器侧生效。
+ *
+ * <p>感知/意识/反叛 的"分维度首箱"另有门槛：必须已装备『祂者初』（fragmentGate，由 Curios
+ * 分支注入 AscensionEffects.wearingHeFirst），未装备时打开箱子不会消耗该维度首箱标记。
  */
 public final class FirstChestReward {
 
     private static final String TAG_CLAIMED = "divinebeast.first_chest_claimed";
 
+    /** 证悟碎片（感知/意识/反叛）的领取门槛：已装备『祂者初』。由 Curios 分支注入，默认拒绝。 */
+    private static java.util.function.Predicate<Player> fragmentGate = p -> false;
+
     private FirstChestReward() {
+    }
+
+    public static void setFragmentGate(java.util.function.Predicate<Player> gate) {
+        fragmentGate = gate;
     }
 
     public static void register() {
@@ -38,9 +48,6 @@ public final class FirstChestReward {
             return;
         }
         CompoundTag tag = player.getPersistentData();
-        if (tag.getBoolean(TAG_CLAIMED)) {
-            return;
-        }
         AbstractContainerMenu menu = event.getContainer();
         if (menu == null) {
             return;
@@ -59,32 +66,35 @@ public final class FirstChestReward {
         if (chest == null) {
             return; // 打开的并非箱子类容器（如自身背包/工作台等）
         }
-        tag.putBoolean(TAG_CLAIMED, true);
 
-        // 『祂』『兽』自带绑定诅咒
-        ItemStack deity = new ItemStack(ModItems.DEITY.get());
-        ItemStack beast = new ItemStack(ModItems.BEAST.get());
-        deity.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
-        beast.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+        // ---------- 1) 新手礼盒：『祂』『兽』，整个存档仅一次 ----------
+        if (!tag.getBoolean(TAG_CLAIMED)) {
+            tag.putBoolean(TAG_CLAIMED, true);
 
-        boolean missed = false;
-        for (ItemStack stack : new ItemStack[]{deity, beast}) {
-            if (!addToChest(chest, stack)) {
-                missed = true;
-                dropNear(player, stack);
+            // 『祂』『兽』自带绑定诅咒
+            ItemStack deity = new ItemStack(ModItems.DEITY.get());
+            ItemStack beast = new ItemStack(ModItems.BEAST.get());
+            deity.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+            beast.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+
+            boolean missed = false;
+            for (ItemStack stack : new ItemStack[]{deity, beast}) {
+                if (!addToChest(chest, stack)) {
+                    missed = true;
+                    dropNear(player, stack);
+                }
+            }
+            if (!missed) {
+                player.sendSystemMessage(Component.translatable("divinebeast.msg.first_chest"));
             }
         }
-        if (!missed) {
-            player.sendSystemMessage(Component.translatable("divinebeast.msg.first_chest"));
-        }
 
-        // 分维度首箱 → 感知/意识/反叛（各维度各一次）
+        // ---------- 2) 分维度首箱 → 感知/意识/反叛（每个维度各一次，须已装备『祂者初』） ----------
         String dimKey = player.level().dimension().location().toString();
         String dimFlag = "divinebeast.first_dim_" + dimKey;
-        if (!tag.getBoolean(dimFlag)) {
+        if (!tag.getBoolean(dimFlag) && fragmentGate.test(player)) {
             ItemStack fragment = null;
-            String key = "minecraft:overworld";
-            if (dimKey.equals(key)) {
+            if (dimKey.equals("minecraft:overworld")) {
                 fragment = new ItemStack(ModItems.PERCEPTION.get());      // 主世界→感知
             } else if (dimKey.equals("minecraft:the_nether")) {
                 fragment = new ItemStack(ModItems.CONSCIOUSNESS.get());   // 下界→意识

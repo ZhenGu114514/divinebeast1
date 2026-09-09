@@ -180,6 +180,26 @@ function M-Rays($g, $s, $cx, $cy, $c) {
         G-Line $g $s ($cx + [Math]::Cos($rad) * 0.24) ($cy + [Math]::Sin($rad) * 0.24) ($cx + [Math]::Cos($rad) * 0.46) ($cy + [Math]::Sin($rad) * 0.46) 0.05 $c
     }
 }
+function M-Diamond($g, $s, $cx, $cy, $rx, $ry, $c) {
+    G-Poly $g $s @( @($cx, ($cy - $ry)), @(($cx + $rx), $cy), @($cx, ($cy + $ry)), @(($cx - $rx), $cy) ) $c
+}
+function M-Tear($g, $s, $cx, $cy, $rx, $ry, $c, $cHi) {
+    # 泪滴：上半圆 + 底尖（向下）
+    G-Disc $g $s $cx ($cy - $ry * 0.45) ($rx * 0.62) $c
+    G-Poly $g $s @( @(($cx - $rx * 0.58), ($cy - $ry * 0.1)), @(($cx + $rx * 0.58), ($cy - $ry * 0.1)), @($cx, ($cy + $ry * 0.75)) ) $c
+    if ($cHi) { G-Disc $g $s ($cx - $rx * 0.2) ($cy - $ry * 0.55) ($rx * 0.13) $cHi }
+}
+function M-Crack($g, $s, $cx, $cy, $c) {
+    G-Line $g $s ($cx - 0.08) ($cy - 0.3) ($cx + 0.05) ($cy + 0.05) 0.045 $c
+    G-Line $g $s ($cx + 0.05) ($cy + 0.05) ($cx - 0.02) ($cy + 0.3) 0.045 $c
+    G-Line $g $s ($cx + 0.05) ($cy + 0.05) ($cx + 0.22) ($cy + 0.2) 0.04 $c
+}
+function M-Spear($g, $s, $cx, $baseY, $c) {
+    # 反叛之矛：斜刺向上
+    G-Poly $g $s @( @(($cx - 0.13), $baseY), @($cx, ($baseY - 0.62)), @(($cx + 0.13), $baseY) ) $c
+    G-Poly $g $s @( @(($cx - 0.13), $baseY), @(($cx + 0.13), $baseY), @($cx, ($baseY + 0.16)) ) (Col 20 20 20)
+    G-Line $g $s ($cx - 0.26) ($baseY - 0.10) ($cx + 0.26) ($baseY - 0.10) 0.045 (Col 230 230 210)
+}
 
 # ============ 具体图标（物品与槽位共用图案；槽位加边框） ============
 function Draw-Icon($g, $s, [string]$key, [bool]$slot) {
@@ -247,6 +267,75 @@ function Draw-Icon($g, $s, [string]$key, [bool]$slot) {
             M-Wheel $g $s (Col 220 230 255)
         }
         'divine' { Draw-Icon $g $s 'deity' $false }
+
+        # ============ 证悟系（祂者初 → 本心）与素材 ============
+        'he_first' {
+            # 祂者初：青白混沌初眼（未睁开的神格）
+            G-Bg $g $s (Col 12 26 46) (Col 60 130 170)
+            G-Disc $g $s 0.5 0.5 0.34 (Col 150 220 240)
+            M-Diamond $g $s 0.5 0.5 0.20 0.24 (Col 240 250 255)
+            G-Disc $g $s 0.5 0.5 0.10 (Col 40 110 150)
+        }
+        'perception' {
+            # 感知：睁开的竖瞳之眼
+            G-Bg $g $s (Col 20 40 24) (Col 90 170 100)
+            M-Eye $g $s 0.5 0.5 0.30 (Col 235 255 230) (Col 120 220 120) (Col 12 60 30)
+        }
+        'consciousness' {
+            # 意识：脑内漩涡/念头
+            G-Bg $g $s (Col 30 18 48) (Col 150 110 200)
+            M-Swirl $g $s (Col 235 220 255)
+            G-Disc $g $s 0.5 0.5 0.07 (Col 90 60 140)
+        }
+        'rebellion' {
+            # 反叛：裂开锁链的矛
+            G-Bg $g $s (Col 70 14 6) (Col 210 80 40)
+            M-Spear $g $s 0.42 0.78 (Col 250 235 190)
+            M-Spear $g $s 0.72 0.88 (Col 200 160 120)
+            G-Line $g $s 0.5 0.16 0.5 0.86 0.03 (Col 255 210 120)
+        }
+        'redemption' {
+            # 救赎：圣白光环 + 金色十字心
+            G-Bg $g $s (Col 40 42 18) (Col 220 200 110)
+            M-Rays $g $s 0.5 0.5 (Col 255 250 200)
+            G-Ring $g $s 0.5 0.5 0.40 0.07 (Col 255 246 210)
+            M-Heart $g $s (Col 255 225 130) (Col 255 250 235)
+            G-Disc $g $s 0.5 0.5 0.06 (Col 200 150 60)
+        }
+        'he_extreme' {
+            # 祂者极：炽烈金环神瞳（全开）
+            G-Bg $g $s (Col 60 20 8) (Col 230 140 40)
+            M-Rays $g $s 0.5 0.5 (Col 255 220 130)
+            G-Disc $g $s 0.5 0.5 0.30 (Col 255 190 90)
+            M-Eye $g $s 0.5 0.5 0.26 (Col 255 245 200) (Col 200 90 20) (Col 60 16 4)
+        }
+        'grief' {
+            # 悲：垂落泪滴
+            G-Bg $g $s (Col 18 26 60) (Col 90 130 210)
+            M-Tear $g $s 0.5 0.42 0.22 0.34 (Col 180 210 255) (Col 235 245 255)
+        }
+        'pain' {
+            # 伤：裂开的心
+            G-Bg $g $s (Col 60 8 10) (Col 200 40 50)
+            M-Heart $g $s (Col 255 130 140) (Col 255 60 70)
+            M-Crack $g $s 0.5 0.52 (Col 70 8 14)
+            G-Disc $g $s 0.50 0.52 0.05 (Col 255 240 200)
+        }
+        'true_heart' {
+            # 本心：澄澈炽金心（回归本真）
+            G-Bg $g $s (Col 30 26 14) (Col 210 170 90)
+            M-Rays $g $s 0.5 0.5 (Col 255 230 160 180)
+            M-Heart $g $s (Col 250 210 120) (Col 255 245 220)
+            M-Diamond $g $s 0.5 0.40 0.09 0.12 (Col 255 250 235)
+        }
+        'he_true' {
+            # 真者祂：黑白双瞳合一 —— 吾即祂、祂即吾
+            G-Bg $g $s (Col 6 6 10) (Col 90 90 120)
+            M-Rays $g $s 0.5 0.5 (Col 220 230 255)
+            G-Disc $g $s 0.5 0.5 0.30 (Col 235 240 255)
+            M-Diamond $g $s 0.5 0.5 0.16 0.20 (Col 250 252 255)
+            G-Disc $g $s 0.5 0.5 0.06 (Col 20 20 30)
+        }
         default {
             G-Bg $g $s (Col 60 60 60) (Col 120 120 120)
             G-Disc $g $s 0.5 0.5 0.3 (Col 180 180 180)
@@ -289,7 +378,9 @@ function Render([string]$key, [int]$final, [string]$outDir, [bool]$slot) {
 }
 
 $itemKeys = @('deity', 'beast', 'nonexist_nonexist', 'nonexist_exist', 'maybe_exist',
-    'exist_exist', 'impossible_nonexist', 'supreme', 'wisdom', 'life', 'chaos', 'self', 'devour', 'samsara')
+    'exist_exist', 'impossible_nonexist', 'supreme', 'wisdom', 'life', 'chaos', 'self', 'devour', 'samsara',
+    'he_first', 'perception', 'consciousness', 'rebellion', 'redemption', 'he_extreme',
+    'grief', 'pain', 'true_heart', 'he_true')
 $slotKeys = @('divine', 'beast') + @('nonexist_nonexist', 'nonexist_exist', 'maybe_exist', 'exist_exist',
     'impossible_nonexist', 'supreme', 'wisdom', 'life', 'chaos', 'self', 'devour', 'samsara')
 

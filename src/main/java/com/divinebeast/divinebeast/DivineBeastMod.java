@@ -57,6 +57,11 @@ public class DivineBeastMod {
             MomentEffects.register();
             BeastEffects.register();
             AscensionEffects.register();
+            // 碎片门槛：感知/意识/反叛 需已装备『祂者初』
+            FirstChestReward.setFragmentGate(AscensionEffects::wearingHeFirst);
+            // 证悟抉择界面仅客户端显示
+            DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                    () -> () -> com.divinebeast.divinebeast.client.AscensionDeathClient.init());
         } else {
             LOGGER.info("[{}] 未检测到 Curios，槽位联动与『祂』效果关闭；物品仍可正常注册与使用。", MOD_ID);
         }

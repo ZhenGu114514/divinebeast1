@@ -2,11 +2,13 @@ package com.divinebeast.divinebeast.net;
 
 import com.divinebeast.divinebeast.DivineBeastMod;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 /**
- * 简单网络通道：客户端 → 服务器 传递 C 键开关（救赎重生）。
+ * 简单网络通道：C 键开关 + 证悟死亡抉择界面。
  * 本类不引用 Curios，任何环境下都安全。
  */
 public final class Networking {
@@ -28,9 +30,22 @@ public final class Networking {
                 ToggleRespawnMessage::encode,
                 ToggleRespawnMessage::decode,
                 ToggleRespawnMessage::handle);
+        CHANNEL.registerMessage(nextId++, AscensionScreenMessage.class,
+                AscensionScreenMessage::encode,
+                AscensionScreenMessage::decode,
+                AscensionScreenMessage::handle);
+        CHANNEL.registerMessage(nextId++, AscensionChoiceMessage.class,
+                AscensionChoiceMessage::encode,
+                AscensionChoiceMessage::decode,
+                AscensionChoiceMessage::handle);
     }
 
     public static void sendToServer(Object message) {
         CHANNEL.sendToServer(message);
+    }
+
+    /** 发送到指定玩家（S2C）。 */
+    public static void sendToPlayer(ServerPlayer player, Object message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
     }
 }

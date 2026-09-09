@@ -78,8 +78,12 @@ public final class CuriosEffects {
     private static final UUID REDEEM_ATK = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000005");
     private static final UUID REDEEM_ATK_SPEED = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000006");
     private static final UUID REDEEM_MOVE_SPEED = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-000000000007");
-    private static final UUID INSIGHT_SLOT = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a1");
-    private static final java.util.Set<java.util.UUID> INSIGHT_APPLIED = new java.util.HashSet<>();
+    private static final UUID HE_FIRST_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a1");
+    private static final UUID HE_EXTREME_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a2");
+    private static final UUID HE_TRUE_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a3");
+    private static final java.util.Set<java.util.UUID> HE_FIRST_APPLIED = new java.util.HashSet<>();
+    private static final java.util.Set<java.util.UUID> HE_EXTREME_APPLIED = new java.util.HashSet<>();
+    private static final java.util.Set<java.util.UUID> HE_TRUE_APPLIED = new java.util.HashSet<>();
     private static final String ADV_REDEMPTION_TAG = "divinebeast.adv.deity_redemption";
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
@@ -187,14 +191,30 @@ public final class CuriosEffects {
         }
         Player player = event.player;
 
-        // 证悟槽：祂·救赎 且 兽·自·我 时解锁（transient slot modifier）
-        syncInsightSlot(player);
+        // 证悟槽同步（he_first / he_extreme / he_true 按阶段开合）
+        syncAscensionSlots(player);
 
         // 攻击力×1000 奖励到期收回
         expireDivineSwing(player, player.level().getGameTime());
 
         // 救赎形态：饰品栏中『祂』改名为彩色『祂』（每秒随机换色）
         renameDeityInCurio(player, phaseTwo(player));
+
+        // 救赎/本心 完全封印：除 救赎/本心 自身外，一切饰品效果失效
+        if (AscensionEffects.effectsDisabled(player)) {
+            // 收回『祂』已施加的属性/能力（含 divine swing 残留）
+            ensureFlight(player, false);
+            clearKnockbackResistance(player);
+            clearSpeedBuffs(player);
+            unlockAttribute(player, MAX_HEALTH_LOCK);
+            unlockAttribute(player, ARMOR_LOCK);
+            AttributeInstance sealedAtk = player.getAttribute(Attributes.ATTACK_DAMAGE);
+            if (sealedAtk != null) {
+                sealedAtk.removeModifier(REDEEM_ATK);
+            }
+            REDEEM_SWING_UNTIL.remove(player.getUUID());
+            return;
+        }
 
         // 飞行 / 收回
         if (phaseTwo(player)) {
@@ -210,17 +230,22 @@ public final class CuriosEffects {
             player.getPersistentData().putBoolean(ADV_REDEMPTION_TAG, true);
             ProgressGrants.grant(serverPlayer, "deity_redemption");
         }
-        // 同时满足「祂救赎＋兽自·我」→ 自动获得『祂者初』（一次）
+        // 同时满足「祂救赎＋兽自·我」→ 自动获得『祂者初』并进入阶段 1（一次）
         if (phaseTwo(player) && BeastEffects.stageOf(player) == 3
-                && player instanceof ServerPlayer serverPlayer2
-                && !player.getPersistentData().getBoolean("divinebeast.got_he_first")) {
-            player.getPersistentData().putBoolean("divinebeast.got_he_first", true);
-            ItemStack gift = new ItemStack(ModItems.HE_FIRST.get());
-            gift.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
-            if (!player.getInventory().add(gift)) {
-                player.drop(gift, false);
+                && AscensionEffects.stageOf(player) == AscensionEffects.STAGE_NONE) {
+            if (player.getPersistentData().getBoolean("divinebeast.got_he_first")) {
+                // 旧档兼容：已获得过 祂者初 → 只推进阶段，不重复发放
+                AscensionEffects.setStage(player, AscensionEffects.STAGE_HE_FIRST);
+            } else if (player instanceof ServerPlayer serverPlayer2) {
+                player.getPersistentData().putBoolean("divinebeast.got_he_first", true);
+                AscensionEffects.setStage(player, AscensionEffects.STAGE_HE_FIRST);
+                ItemStack gift = new ItemStack(ModItems.HE_FIRST.get());
+                gift.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+                if (!player.getInventory().add(gift)) {
+                    player.drop(gift, false);
+                }
+                player.sendSystemMessage(Component.translatable("divinebeast.msg.got_he_first"));
             }
-            player.sendSystemMessage(Component.translatable("divinebeast.msg.got_he_first"));
         }
         if (curseActive(player, CURSE_LIFE_LOCK)) {
             if (player.totalExperience != 0 || player.experienceLevel != 0 || player.experienceProgress != 0.0F) {
@@ -229,7 +254,6 @@ public final class CuriosEffects {
                 player.experienceProgress = 0.0F;
             }
         }
-
         if (player.tickCount % 10 != 0) {
             return;
         }
@@ -291,7 +315,8 @@ public final class CuriosEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (event.getEntity() instanceof Player player && phaseTwo(player)) {
+        if (event.getEntity() instanceof Player player && phaseTwo(player)
+                && !AscensionEffects.effectsDisabled(player)) {
             event.setCanceled(true);
         }
     }
@@ -301,7 +326,8 @@ public final class CuriosEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (event.getEntity() instanceof Player player && phaseTwo(player)) {
+        if (event.getEntity() instanceof Player player && phaseTwo(player)
+                && !AscensionEffects.effectsDisabled(player)) {
             event.setCanceled(true);
         }
     }
@@ -312,6 +338,7 @@ public final class CuriosEffects {
             return;
         }
         if (event.getEntity() instanceof Player player && phaseTwo(player)
+                && !AscensionEffects.effectsDisabled(player)
                 && event.getEffectInstance() != null && !event.getEffectInstance().getEffect().isBeneficial()) {
             event.setCanceled(true);
         }
@@ -468,7 +495,7 @@ public final class CuriosEffects {
         }
         LivingEntity victim = event.getEntity();
         Player attacker = attackingPlayer(event.getSource());
-        if (attacker == null || victim.is(attacker)) {
+        if (attacker == null || victim.is(attacker) || AscensionEffects.effectsDisabled(attacker)) {
             return;
         }
 
@@ -513,6 +540,11 @@ public final class CuriosEffects {
             return;
         }
         DamageSource source = event.getSource();
+
+        // 救赎/本心 封印：受击方无任何『祂』免伤/反制
+        if (AscensionEffects.effectsDisabled(player)) {
+            return;
+        }
 
         // 救赎常驻：免疫带救赎印记生物对你造成的伤害
         if (phaseTwo(player)) {
@@ -568,7 +600,8 @@ public final class CuriosEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (!(event.getEntity() instanceof Player player) || player.isDeadOrDying()) {
+        if (!(event.getEntity() instanceof Player player) || player.isDeadOrDying()
+                || AscensionEffects.effectsDisabled(player)) {
             return;
         }
         // 不可能存在不可能存在时刻：致命伤 + 有图腾 → 取消复活直接死亡
@@ -595,7 +628,7 @@ public final class CuriosEffects {
             return;
         }
         // 常驻奖励：击败带救赎印记的生物 → 自身获得 5 秒攻击力 ×1000（不受 C 键影响，救赎阶段内必触发）
-        if (!phaseTwo(player)) {
+        if (!phaseTwo(player) || AscensionEffects.effectsDisabled(player)) {
             return;
         }
         grantDivineSwing(player);
@@ -605,14 +638,15 @@ public final class CuriosEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (event.getNewTarget() instanceof Player player && phaseTwo(player)) {
+        if (event.getNewTarget() instanceof Player player && phaseTwo(player)
+                && !AscensionEffects.effectsDisabled(player)) {
             event.setCanceled(true);
         }
     }
 
     private static void onXpChange(PlayerXpEvent.XpChange event) {
         Player player = event.getEntity();
-        if (player.level().isClientSide) {
+        if (player.level().isClientSide || AscensionEffects.effectsDisabled(player)) {
             return;
         }
         if (curseActive(player, CURSE_LIFE_LOCK)) {
@@ -693,28 +727,36 @@ public final class CuriosEffects {
         }
     }
 
-    /** 证悟(insight)槽：『祂』救赎 且 『兽』自·我 → +1 格（临时修饰）；否则收回 */
-    private static void syncInsightSlot(Player player) {
-        boolean wanted = phaseTwo(player) && BeastEffects.stageOf(player) == 3;
+    /** 证悟阶段槽：按 AscensionEffects.stageOf 解锁 he_first / he_extreme / he_true（transient slot modifier） */
+    private static void syncAscensionSlots(Player player) {
+        int stage = AscensionEffects.stageOf(player);
         UUID uuid = player.getUUID();
         java.util.Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isEmpty()) {
             return;
         }
         ICuriosItemHandler handler = optional.get();
-        boolean applied = INSIGHT_APPLIED.contains(uuid);
-        if (wanted && !applied) {
-            com.google.common.collect.Multimap<String, AttributeModifier> map = com.google.common.collect.LinkedHashMultimap.create();
-            map.put("insight", new AttributeModifier(INSIGHT_SLOT, "divinebeast_insight", 1.0D,
-                    AttributeModifier.Operation.ADDITION));
+        boolean heFirstWanted = stage == 1;
+        boolean heExtremeWanted = stage == 2;
+        boolean heTrueWanted = stage == 3;
+        syncOneSlot(handler, uuid, "he_first", heFirstWanted, HE_FIRST_SLOT_MOD, HE_FIRST_APPLIED);
+        syncOneSlot(handler, uuid, "he_extreme", heExtremeWanted, HE_EXTREME_SLOT_MOD, HE_EXTREME_APPLIED);
+        syncOneSlot(handler, uuid, "he_true", heTrueWanted, HE_TRUE_SLOT_MOD, HE_TRUE_APPLIED);
+    }
+
+    private static void syncOneSlot(ICuriosItemHandler handler, UUID uuid, String slotId, boolean wanted,
+                                    UUID modUuid, java.util.Set<java.util.UUID> appliedSet) {
+        boolean applied = appliedSet.contains(uuid);
+        com.google.common.collect.Multimap<String, AttributeModifier> map = com.google.common.collect.LinkedHashMultimap.create();
+        map.put(slotId, new AttributeModifier(modUuid, "divinebeast_" + slotId, 1.0D,
+                AttributeModifier.Operation.ADDITION));
+        // transient modifier 以 uuid 幂等覆盖：重登/换实体后补加无需依赖集合记忆
+        if (wanted) {
             handler.addTransientSlotModifiers(map);
-            INSIGHT_APPLIED.add(uuid);
-        } else if (!wanted && applied) {
-            com.google.common.collect.Multimap<String, AttributeModifier> map = com.google.common.collect.LinkedHashMultimap.create();
-            map.put("insight", new AttributeModifier(INSIGHT_SLOT, "divinebeast_insight", 1.0D,
-                    AttributeModifier.Operation.ADDITION));
+            appliedSet.add(uuid);
+        } else if (applied) {
             handler.removeSlotModifiers(map);
-            INSIGHT_APPLIED.remove(uuid);
+            appliedSet.remove(uuid);
         }
     }
 

@@ -111,6 +111,8 @@ public final class ModItems {
             ITEMS.register("pain", () -> new DivineBeastItem(DivineBeastItem.curioProperties()));     // 伤
     public static final RegistryObject<Item> TRUE_HEART =
             ITEMS.register("true_heart", () -> new DivineBeastItem(DivineBeastItem.curioProperties())); // 本心
+    public static final RegistryObject<Item> HE_TRUE =
+            ITEMS.register("he_true", () -> new DivineBeastItem(DivineBeastItem.curioProperties()));    // 真者祂
 
     // ------------------------------------------------------------------
     // 全部物品（用于创造模式标签等）
@@ -123,7 +125,8 @@ public final class ModItems {
             DEITY, BEAST,
             NONEXIST_NONEXIST, NONEXIST_EXIST, MAYBE_EXIST, EXIST_EXIST, IMPOSSIBLE_NONEXIST,
             SUPREME, WISDOM, LIFE, CHAOS, SELF, DEVOUR, SAMSARA,
-            HE_FIRST, PERCEPTION, CONSCIOUSNESS, REBELLION, REDEMPTION, HE_EXTREME, GRIEF, PAIN, TRUE_HEART);
+            HE_FIRST, PERCEPTION, CONSCIOUSNESS, REBELLION, REDEMPTION, HE_EXTREME, GRIEF, PAIN, TRUE_HEART,
+            HE_TRUE);
 
     public static final RegistryObject<CreativeModeTab> TAB =
             TABS.register("divinebeast_tab", () -> CreativeModeTab.builder()

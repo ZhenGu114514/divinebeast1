@@ -1,13 +1,18 @@
 package com.divinebeast.divinebeast.curio;
 
 import com.divinebeast.divinebeast.item.ModItems;
+import com.divinebeast.divinebeast.net.AscensionScreenMessage;
+import com.divinebeast.divinebeast.net.Networking;
+import net.minecraft.ChatFormatting;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
@@ -19,25 +24,39 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 
 import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 
 /**
- * 证悟系效果引擎（仅 Curios 存在时加载）。
- * 佩戴判断：证悟槽(insight)放 祂者初/祂者极；救赎槽(redemption)放 救赎；本心槽(trueheart)放 本心。
- * 按近似实现：
- *  - 祂者初：可放置不可破坏、不可造成伤害、不可受到伤害（含虚空）、隐身+无碰撞（近似）、禁 /tp 涉及你；
- *  - 祂者极：半径 5 格内敌对生物每秒受到 (10+经验等级) 且来源为你的伤害；同样全免伤；
- *  - 救赎 / 本心：判定为"所有饰品效果失效"（effectsDisabled，供其它引擎收敛）；本心额外：击杀生物时自己死亡；
- *  - 救赎 / 本心 附带绑定不可卸（由 CuriosCompat 提供），本类负责运行时状态。
+ * 证悟线五阶段引擎（仅 Curios 存在时加载）。
+ *
+ * <p><b>槽位链（每件一个独立槽，size=0 + 槽位 modifier 驱动）：</b>
+ * he_first(祂者初) / redemption(救赎) / he_extreme(祂者极) / trueheart(本心) / he_true(真者祂)。
+ *
+ * <p><b>阶段（玩家持久 NBT {@code divinebeast.asc_stage}）：</b>
+ * 0 无 → 1 祂者初（两形态集齐自动获得，he_first 槽开）
+ * → 2 自我救赎（佩戴救赎死亡后经抉择界面复活：销毁 祂者初+救赎，he_extreme 槽开、发放祂者极）
+ * → 3 找回自我（佩戴本心死亡后经抉择界面复活：销毁 祂者极+本心，he_true 槽开、发放真者祂）。
+ *
+ * <p><b>效果：</b>祂者初/祂者极 佩戴即全免伤/禁伤/隐身/虚空保护/禁 /tp/禁破坏；
+ * 救赎 或 本心 佩戴（effectsDisabled）封印除自身外一切饰品效果，因此佩戴者会死 ——
+ * 其死亡会弹出「自我救赎 / 找回自我」抉择界面（见死亡迁移）。
  */
 public final class AscensionEffects {
 
-    private static final String INSIGHT_SLOT = "insight";
-    private static final String REDEMPTION_SLOT = "redemption";
-    private static final String TRUEHEART_SLOT = "trueheart";
-    private static final double BEACON_RADIUS = 5.0D;
+    // 槽位 id（与 data/divinebeast/curios/slots/*.json、entities、tag 一一对应）
+    public static final String HE_FIRST_SLOT = "he_first";
+    public static final String REDEMPTION_SLOT = "redemption";
+    public static final String HE_EXTREME_SLOT = "he_extreme";
+    public static final String TRUEHEART_SLOT = "trueheart";
+    public static final String HE_TRUE_SLOT = "he_true";
 
+    // 阶段持久 NBT
+    public static final String TAG_ASC_STAGE = "divinebeast.asc_stage";
+    public static final int STAGE_NONE = 0;
+    public static final int STAGE_HE_FIRST = 1;
+    public static final int STAGE_HE_EXTREME = 2;
+    public static final int STAGE_HE_TRUE = 3;
+
+    private static final double BEACON_RADIUS = 5.0D;
     /** 同步标记：当前伤害来自祂者极光柱（豁免"不可造成伤害"规则） */
     private static boolean beaconStrike = false;
 
@@ -48,14 +67,47 @@ public final class AscensionEffects {
         MinecraftForge.EVENT_BUS.addListener(AscensionEffects::onPlayerTick);
         MinecraftForge.EVENT_BUS.addListener(AscensionEffects::onLivingAttack);
         MinecraftForge.EVENT_BUS.addListener(AscensionEffects::onLivingDamage);
+        MinecraftForge.EVENT_BUS.addListener(AscensionEffects::onDeath);
         MinecraftForge.EVENT_BUS.addListener(AscensionEffects::onLeftClickBlock);
         MinecraftForge.EVENT_BUS.addListener(AscensionEffects::onTeleportCommand);
-        MinecraftForge.EVENT_BUS.addListener(AscensionEffects::onDeath);
     }
 
     // ==================================================================
-    // 佩戴判定
+    // 阶段状态
     // ==================================================================
+
+    public static int stageOf(Player player) {
+        CompoundTag tag = player.getPersistentData();
+        return tag.contains(TAG_ASC_STAGE) ? tag.getInt(TAG_ASC_STAGE) : STAGE_NONE;
+    }
+
+    public static void setStage(Player player, int stage) {
+        player.getPersistentData().putInt(TAG_ASC_STAGE, stage);
+    }
+
+    // ==================================================================
+    // 佩戴判定（每件独立槽）
+    // ==================================================================
+
+    public static boolean wearingHeFirst(Player p) {
+        return wearsInSlot(p, HE_FIRST_SLOT, ModItems.HE_FIRST.get());
+    }
+
+    public static boolean wearingRedemption(Player p) {
+        return wearsInSlot(p, REDEMPTION_SLOT, ModItems.REDEMPTION.get());
+    }
+
+    public static boolean wearingHeExtreme(Player p) {
+        return wearsInSlot(p, HE_EXTREME_SLOT, ModItems.HE_EXTREME.get());
+    }
+
+    public static boolean wearingTrueHeart(Player p) {
+        return wearsInSlot(p, TRUEHEART_SLOT, ModItems.TRUE_HEART.get());
+    }
+
+    public static boolean wearingHeTrue(Player p) {
+        return wearsInSlot(p, HE_TRUE_SLOT, ModItems.HE_TRUE.get());
+    }
 
     private static boolean wearsInSlot(Player player, String slotId, net.minecraft.world.item.Item item) {
         Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
@@ -71,46 +123,41 @@ public final class AscensionEffects {
         return false;
     }
 
-    private static boolean wearingHeFirst(Player p) {
-        return wearsInSlot(p, INSIGHT_SLOT, ModItems.HE_FIRST.get());
-    }
-
-    private static boolean wearingHeExtreme(Player p) {
-        return wearsInSlot(p, INSIGHT_SLOT, ModItems.HE_EXTREME.get());
-    }
-
-    private static boolean wearingRedemption(Player p) {
-        return wearsInSlot(p, REDEMPTION_SLOT, ModItems.REDEMPTION.get());
-    }
-
-    private static boolean wearingTrueHeart(Player p) {
-        return wearsInSlot(p, TRUEHEART_SLOT, ModItems.TRUE_HEART.get());
-    }
-
-    /** 救赎/本心：自身装备的所有饰品效果失效 */
+    /** 救赎 / 本心：封印自身之外的一切饰品效果（含 祂者初/祂者极）。 */
     public static boolean effectsDisabled(Player player) {
         return wearingRedemption(player) || wearingTrueHeart(player);
     }
 
     // ==================================================================
-    // 每 tick：隐身/无碰撞近似 + 祂者极光柱伤害 + 虚空保护
+    // 每 tick：隐身 + 祂者极光柱 + 虚空保护
     // ==================================================================
+
+    // ==================================================================
+    // 抉择状态（超时兜底：pending 超过 10 秒未选择 → 自动普通重生）
+    // ==================================================================
+    private static final String TAG_PENDING = "divinebeast.asc_pending";
+    private static final long PENDING_TIMEOUT = 200L;
 
     private static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) {
             return;
         }
         Player player = event.player;
-        boolean heFirst = wearingHeFirst(player);
-        boolean heExtreme = wearingHeExtreme(player);
-        boolean phasing = heFirst || heExtreme;
-
+        CompoundTag tag = player.getPersistentData();
+        if (tag.contains(TAG_PENDING) && player instanceof ServerPlayer serverPlayer) {
+            long pendingAt = tag.getLong(TAG_PENDING);
+            if (player.level().getGameTime() - pendingAt > PENDING_TIMEOUT) {
+                tag.remove(TAG_PENDING);
+                handleChoice(serverPlayer, 0);
+                return;
+            }
+        }
+        boolean phasing = !effectsDisabled(player)
+                && (wearingHeFirst(player) || wearingHeExtreme(player));
         if (phasing) {
-            // 近似：不可见（无碰撞需旁观模式能力，暂以隐身近似）
             if (!player.isInvisible()) {
                 player.setInvisible(true);
             }
-            // 虚空保护：低于世界底则送回上方
             if (player.getY() < player.level().getMinBuildHeight() - 4) {
                 player.teleportTo(player.getX(), player.level().getMinBuildHeight() + 4, player.getZ());
             }
@@ -119,8 +166,7 @@ public final class AscensionEffects {
                 player.setInvisible(false);
             }
         }
-
-        if (heExtreme && player.tickCount % 20 == 0) {
+        if (!effectsDisabled(player) && wearingHeExtreme(player) && player.tickCount % 20 == 0) {
             float dmg = 10.0F + player.experienceLevel;
             for (Monster mob : player.level().getEntitiesOfClass(Monster.class,
                     net.minecraft.world.phys.AABB.ofSize(player.position(),
@@ -149,14 +195,14 @@ public final class AscensionEffects {
         if (event.getSource().getEntity() instanceof Player player) {
             attacker = player;
         }
-        // 祂者初/祂者极：无法对其他生物造成伤害
-        if (attacker != null && (wearingHeFirst(attacker) || wearingHeExtreme(attacker))
+        if (attacker != null && !effectsDisabled(attacker)
+                && (wearingHeFirst(attacker) || wearingHeExtreme(attacker))
                 && !event.getEntity().is(attacker)) {
             event.setCanceled(true);
         }
     }
 
-    private static boolean wearingHeFirstOrExtreme(DamageSource source) {
+    private static boolean attackerWearingHeFirstOrExtreme(DamageSource source) {
         Player attacker = null;
         Entity e = source.getEntity();
         if (e instanceof Player player) {
@@ -165,7 +211,7 @@ public final class AscensionEffects {
                 && projectile.getOwner() instanceof Player player2) {
             attacker = player2;
         }
-        if (attacker == null) {
+        if (attacker == null || effectsDisabled(attacker)) {
             return false;
         }
         return wearingHeFirst(attacker) || wearingHeExtreme(attacker);
@@ -175,61 +221,155 @@ public final class AscensionEffects {
         if (event.getEntity().level().isClientSide || beaconStrike) {
             return;
         }
-        // 祂者初/祂者极：不可受到伤害（含虚空等一切）
         if (event.getEntity() instanceof Player player
+                && !effectsDisabled(player)
                 && (wearingHeFirst(player) || wearingHeExtreme(player))) {
             event.setCanceled(true);
             return;
         }
-        // 阻止穿戴者造成任何伤害（含弹射物来源）
-        if (wearingHeFirstOrExtreme(event.getSource())
+        if (attackerWearingHeFirstOrExtreme(event.getSource())
                 && !event.getEntity().is(event.getSource().getEntity())) {
             event.setCanceled(true);
         }
     }
 
-    // ==================================================================
-    // 冒险式：可放置、不可破坏
-    // ==================================================================
-
+    /** 冒险式：不可破坏方块 */
     private static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         Player player = event.getEntity();
-        if (!player.level().isClientSide && (wearingHeFirst(player) || wearingHeExtreme(player))) {
+        if (!player.level().isClientSide && !effectsDisabled(player)
+                && (wearingHeFirst(player) || wearingHeExtreme(player))) {
             event.setCanceled(true);
         }
     }
 
-    // ==================================================================
-    // 禁 /tp 涉及你（传送命令事件）
-    // ==================================================================
-
+    /** 禁 /tp 涉及你 */
     private static void onTeleportCommand(EntityTeleportEvent.TeleportCommand event) {
         if (event.getEntity().level().isClientSide) {
             return;
         }
         if (event.getEntity() instanceof Player player
+                && !effectsDisabled(player)
                 && (wearingHeFirst(player) || wearingHeExtreme(player))) {
             event.setCanceled(true);
         }
     }
 
     // ==================================================================
-    // 本心：击杀生物时自己死亡（复活流程见后续死亡界面批次）
+    // 本心效果：击杀生物时自己死亡（进入「找回自我」迁移通道）
     // ==================================================================
 
     private static void onDeath(LivingDeathEvent event) {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (event.getEntity() instanceof Player killer) {
+        // 本心佩戴者主动击杀 → 自己死亡
+        if (!(event.getEntity() instanceof Player)) {
+            Entity source = event.getSource().getEntity();
+            if (source instanceof Player player && wearingTrueHeart(player) && !player.isDeadOrDying()) {
+                player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
+            }
             return;
         }
-        Entity source = event.getSource().getEntity();
-        if (!(source instanceof Player player)) {
+        // 玩家死亡 → 进入证悟迁移判断
+        if (!(event.getEntity() instanceof ServerPlayer serverPlayer)) {
             return;
         }
-        if (wearingTrueHeart(player) && !player.isDeadOrDying()) {
-            player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
+        boolean offer = tryOpenRedemption(serverPlayer) || tryOpenTrueHeart(serverPlayer);
+        if (offer) {
+            event.setCanceled(true);
+            serverPlayer.getPersistentData().putLong(TAG_PENDING, serverPlayer.level().getGameTime());
+            serverPlayer.setHealth(1.0F);
+            serverPlayer.setInvulnerable(true);
+            // 虚空死亡被取消后原地仍会再触发：先拉回可站立高度
+            if (serverPlayer.getY() < serverPlayer.level().getMinBuildHeight() + 1) {
+                serverPlayer.teleportTo(serverPlayer.getX(), serverPlayer.level().getMinBuildHeight() + 4, serverPlayer.getZ());
+            }
+        }
+    }
+
+    /** 救赎阶段死亡：佩戴 救赎(+祂者初) 且 stage==1 → 弹「自我救赎」界面 */
+    private static boolean tryOpenRedemption(ServerPlayer player) {
+        if (stageOf(player) != STAGE_HE_FIRST || !wearingRedemption(player)) {
+            return false;
+        }
+        Networking.sendToPlayer(player, new AscensionScreenMessage(AscensionScreenMessage.KIND_REDEMPTION));
+        return true;
+    }
+
+    /** 本心阶段死亡：佩戴 本心(+祂者极) 且 stage==2 → 弹「找回自我」界面 */
+    private static boolean tryOpenTrueHeart(ServerPlayer player) {
+        if (stageOf(player) != STAGE_HE_EXTREME || !wearingTrueHeart(player)) {
+            return false;
+        }
+        Networking.sendToPlayer(player, new AscensionScreenMessage(AscensionScreenMessage.KIND_TRUE_HEART));
+        return true;
+    }
+
+    // ==================================================================
+    // 抉择界面回调（服务端由 AscensionChoiceMessage 调用）
+    // ==================================================================
+
+    /** kind=KIND_REDEMPTION / KIND_TRUE_HEART 或 KIND_NORMAL(普通重生，不迁移)。 */
+    public static void handleChoice(ServerPlayer player, int kind) {
+        if (player == null || player.level().isClientSide) {
+            return;
+        }
+        player.getPersistentData().remove(TAG_PENDING);
+        boolean migrated = false;
+        if (kind == AscensionScreenMessage.KIND_REDEMPTION
+                && stageOf(player) == STAGE_HE_FIRST && wearingRedemption(player)) {
+            // 销毁 祂者初 + 救赎（含背包内残留）
+            destroyItem(player, ModItems.HE_FIRST.get());
+            destroyItem(player, ModItems.REDEMPTION.get());
+            setStage(player, STAGE_HE_EXTREME);
+            giveBound(player, ModItems.HE_EXTREME.get());
+            player.sendSystemMessage(Component.translatable("divinebeast.msg.asc.to_extreme")
+                    .withStyle(ChatFormatting.GOLD));
+            migrated = true;
+        } else if (kind == AscensionScreenMessage.KIND_TRUE_HEART
+                && stageOf(player) == STAGE_HE_EXTREME && wearingTrueHeart(player)) {
+            destroyItem(player, ModItems.HE_EXTREME.get());
+            destroyItem(player, ModItems.TRUE_HEART.get());
+            setStage(player, STAGE_HE_TRUE);
+            giveBound(player, ModItems.HE_TRUE.get());
+            player.sendSystemMessage(Component.translatable("divinebeast.msg.asc.to_true")
+                    .withStyle(ChatFormatting.DARK_PURPLE));
+            migrated = true;
+        }
+        // 无论是否迁移：复活到出生点（若用户选普通重生则不迁移但同样回出生点）
+        com.divinebeast.divinebeast.net.AscensionEffectsNoCurios.revive(player);
+        player.setInvulnerable(false);
+        if (!migrated && kind != AscensionScreenMessage.KIND_REDEMPTION
+                && kind != AscensionScreenMessage.KIND_TRUE_HEART) {
+            player.sendSystemMessage(Component.translatable("divinebeast.msg.asc.normal")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+    }
+
+    private static void destroyItem(Player player, net.minecraft.world.item.Item item) {
+        // 清空背包中同名物品
+        for (ItemStack stack : player.getInventory().items) {
+            if (!stack.isEmpty() && stack.is(item)) {
+                stack.shrink(stack.getCount());
+            }
+        }
+        // 清空 curio 槽中同名物品（绑定物品亦由代码回收）
+        Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
+        if (optional.isPresent()) {
+            for (top.theillusivec4.curios.api.SlotResult result : optional.get().findCurios(item)) {
+                ItemStack stack = result.stack();
+                if (!stack.isEmpty()) {
+                    stack.shrink(stack.getCount());
+                }
+            }
+        }
+    }
+
+    private static void giveBound(Player player, net.minecraft.world.item.Item item) {
+        ItemStack gift = new ItemStack(item);
+        gift.enchant(Enchantments.BINDING_CURSE, 1);
+        if (!player.getInventory().add(gift)) {
+            player.drop(gift, false);
         }
     }
 }

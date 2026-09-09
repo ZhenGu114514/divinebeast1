@@ -163,6 +163,14 @@ public final class MomentEffects {
             }
         }
 
+        // 救赎/本心 完全封印：清理已施加的时刻效果并退出
+        if (AscensionEffects.effectsDisabled(player)) {
+            if (hasNoStatDecreaseData(player)) {
+                clearNoStatDecrease(player);
+            }
+            return;
+        }
+
         if (wornNonExistNonExist(player)) {
             if (player.tickCount % 10 == 0) {
                 enforceNoStatDecrease(player);
@@ -263,7 +271,7 @@ public final class MomentEffects {
         }
         LivingEntity victim = event.getEntity();
         Player attacker = attackingPlayer(event.getSource());
-        if (attacker == null || victim.is(attacker)) {
+        if (attacker == null || victim.is(attacker) || AscensionEffects.effectsDisabled(attacker)) {
             return;
         }
         if (wornNonExistExist(attacker)) {
@@ -290,7 +298,8 @@ public final class MomentEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (!(event.getEntity() instanceof Player player)) {
+        if (!(event.getEntity() instanceof Player player)
+                || AscensionEffects.effectsDisabled(player)) {
             return;
         }
         DamageSource source = event.getSource();
@@ -459,6 +468,10 @@ public final class MomentEffects {
             return;
         }
         Player player = event.getEntity();
+        // 救赎/本心 完全封印：已存在存在时刻 的存储/清空能力一并失效
+        if (AscensionEffects.effectsDisabled(player)) {
+            return;
+        }
         ItemStack held = player.getItemInHand(event.getHand());
         if (held.is(ModItems.EXIST_EXIST.get())) {
             // 手持『已存在存在时刻』右键 → 清空存储
@@ -492,7 +505,8 @@ public final class MomentEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || AscensionEffects.effectsDisabled(player)) {
             return;
         }
         if (!wornImpossibleNonExist(player)) {

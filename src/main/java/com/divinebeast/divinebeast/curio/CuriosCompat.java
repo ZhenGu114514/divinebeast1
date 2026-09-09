@@ -158,7 +158,8 @@ public final class CuriosCompat {
         Item item = stack.getItem();
         if (item != ModItems.DEITY.get() && item != ModItems.BEAST.get()
                 && item != ModItems.HE_FIRST.get() && item != ModItems.HE_EXTREME.get()
-                && item != ModItems.REDEMPTION.get() && item != ModItems.TRUE_HEART.get()) {
+                && item != ModItems.REDEMPTION.get() && item != ModItems.TRUE_HEART.get()
+                && item != ModItems.HE_TRUE.get()) {
             return;
         }
         event.addCapability(CuriosCapability.ID_ITEM, CuriosApi.createCurioProvider(new SlotUnlockCurio(stack)));
