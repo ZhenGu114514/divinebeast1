@@ -195,14 +195,16 @@ public final class AscensionEffects {
         if (event.getSource().getEntity() instanceof Player player) {
             attacker = player;
         }
+        // 只有『祂者初』禁伤（冒险/不存在式）；『祂者极』可正常造成伤害（光柱之外也可攻击）
         if (attacker != null && !effectsDisabled(attacker)
-                && (wearingHeFirst(attacker) || wearingHeExtreme(attacker))
+                && wearingHeFirst(attacker)
                 && !event.getEntity().is(attacker)) {
             event.setCanceled(true);
         }
     }
 
-    private static boolean attackerWearingHeFirstOrExtreme(DamageSource source) {
+    /** 攻击来源是否为『祂者初』佩戴者（其伤害一律无效；祂者极不在其列） */
+    private static boolean attackerWearingHeFirst(DamageSource source) {
         Player attacker = null;
         Entity e = source.getEntity();
         if (e instanceof Player player) {
@@ -214,20 +216,22 @@ public final class AscensionEffects {
         if (attacker == null || effectsDisabled(attacker)) {
             return false;
         }
-        return wearingHeFirst(attacker) || wearingHeExtreme(attacker);
+        return wearingHeFirst(attacker);
     }
 
     private static void onLivingDamage(LivingDamageEvent event) {
         if (event.getEntity().level().isClientSide || beaconStrike) {
             return;
         }
+        // 免伤：祂者初/祂者极 均免疫一切伤害（含虚空）
         if (event.getEntity() instanceof Player player
                 && !effectsDisabled(player)
                 && (wearingHeFirst(player) || wearingHeExtreme(player))) {
             event.setCanceled(true);
             return;
         }
-        if (attackerWearingHeFirstOrExtreme(event.getSource())
+        // 来自『祂者初』佩戴者的伤害无效（含弹射物）；祂者极的伤害正常结算
+        if (attackerWearingHeFirst(event.getSource())
                 && !event.getEntity().is(event.getSource().getEntity())) {
             event.setCanceled(true);
         }
@@ -318,9 +322,10 @@ public final class AscensionEffects {
         boolean migrated = false;
         if (kind == AscensionScreenMessage.KIND_REDEMPTION
                 && stageOf(player) == STAGE_HE_FIRST && wearingRedemption(player)) {
-            // 销毁 祂者初 + 救赎（含背包内残留）
-            destroyItem(player, ModItems.HE_FIRST.get());
+            // 先清被解锁槽（redemption）内的『救赎』，再移除解锁来源『祂者初』，
+            // 避免 Curios 回收槽位时把仍在内物品挤回背包。
             destroyItem(player, ModItems.REDEMPTION.get());
+            destroyItem(player, ModItems.HE_FIRST.get());
             setStage(player, STAGE_HE_EXTREME);
             giveBound(player, ModItems.HE_EXTREME.get());
             player.sendSystemMessage(Component.translatable("divinebeast.msg.asc.to_extreme")
@@ -328,8 +333,9 @@ public final class AscensionEffects {
             migrated = true;
         } else if (kind == AscensionScreenMessage.KIND_TRUE_HEART
                 && stageOf(player) == STAGE_HE_EXTREME && wearingTrueHeart(player)) {
-            destroyItem(player, ModItems.HE_EXTREME.get());
+            // 先清被解锁槽（trueheart）内的『本心』，再移除解锁来源『祂者极』。
             destroyItem(player, ModItems.TRUE_HEART.get());
+            destroyItem(player, ModItems.HE_EXTREME.get());
             setStage(player, STAGE_HE_TRUE);
             giveBound(player, ModItems.HE_TRUE.get());
             player.sendSystemMessage(Component.translatable("divinebeast.msg.asc.to_true")
@@ -358,14 +364,16 @@ public final class AscensionEffects {
                 stack.shrink(stack.getCount());
             }
         }
-        // 清空 curio 槽中同名物品（绑定物品亦由代码回收）
+        // 清空 curio 槽中同名物品。必须走 Curios 正规 API（setEquippedCurio → setStackInSlot）
+        // 而非直接 stack.shrink：置空会触发 onUnequip / CurioChangeEvent，
+        // Curios 据此自动移除该物品的 item 级槽位解锁修饰符
+        // （祂者初→redemption、祂者极→trueheart），否则这些槽会残留不消失。
         Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isPresent()) {
-            for (top.theillusivec4.curios.api.SlotResult result : optional.get().findCurios(item)) {
-                ItemStack stack = result.stack();
-                if (!stack.isEmpty()) {
-                    stack.shrink(stack.getCount());
-                }
+            ICuriosItemHandler handler = optional.get();
+            for (top.theillusivec4.curios.api.SlotResult result : handler.findCurios(item)) {
+                top.theillusivec4.curios.api.SlotContext ctx = result.slotContext();
+                handler.setEquippedCurio(ctx.identifier(), ctx.index(), ItemStack.EMPTY);
             }
         }
     }

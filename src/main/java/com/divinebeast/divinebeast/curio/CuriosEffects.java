@@ -765,6 +765,14 @@ public final class CuriosEffects {
         syncAscensionSlots(player);
     }
 
+    /** 供 AscensionEffects 迁移成功后立刻把阶段槽收敛到当前 stage（幂等）。 */
+    public static void resyncAscension(Player player) {
+        if (player == null || player.level().isClientSide) {
+            return;
+        }
+        syncAscensionSlots(player);
+    }
+
     /** 供客户端 tooltip：某件时刻饰品是否已佩戴（其诅咒已解除） */
     public static boolean momentWorn(LivingEntity entity, int index) {
         return index >= 0 && index < MOMENT_SLOTS.length && wearingMoment(entity, index);
