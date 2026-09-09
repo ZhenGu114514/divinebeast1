@@ -15,6 +15,8 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
@@ -34,7 +36,7 @@ import java.util.UUID;
  * 真者『祂』——证悟终点的终极形态引擎（仅 Curios 存在时由 DivineBeastMod 加载）。
  *
  * <p>佩戴（绑定不可卸下）即获得 20 项正面权能：
- * 太初/不朽/永恒之翼/无相/净世/磐石/全知之眼/神能/天罚/光之领域/
+ * 太初/不朽/永恒之翼/万法附魔/净世/磐石/全知之眼/神能/天罚/光之领域/
  * 血之回响/神行/命泉/不灭战意/磁界/威慑/归墟/界缚/不朽之器/神之饱足。
  *
  * <p>实现以"每服务端 tick 维持 + 事件豁免"为主，数值取最强口径；
@@ -123,10 +125,8 @@ public final class HeTrueEffects {
                 }
             }
         }
-        // ---- 4 无相 ----
-        if (!player.isInvisible()) {
-            player.setInvisible(true);
-        }
+        // ---- 4 无相 → 万法附魔：穿戴装备 + 背包内可附魔物品全部获得可附上的正面附魔（无视冲突）----
+        // 隐身效果已按需求移除。附魔在下方每 20 tick 幂等刷新写入。
         // ---- 5 净世：清负面（免疫在 onEffectAdded）----
         List<MobEffectInstance> effects = new java.util.ArrayList<>(player.getActiveEffects());
         for (MobEffectInstance effect : effects) {
@@ -197,6 +197,8 @@ public final class HeTrueEffects {
         if (player.tickCount % 20 != 0) {
             return;
         }
+        // ---- 万法附魔：穿戴装备 + 背包可附魔物品全部得到可附上的正面附魔（无视冲突），永久写入 ----
+        applyDivineEnchantments(player);
         // ---- 10 光之领域（每秒）----
         float beaconDmg = 50.0F + player.experienceLevel;
         for (Monster mob : player.level().getEntitiesOfClass(Monster.class,
@@ -416,7 +418,6 @@ public final class HeTrueEffects {
                 sp.onUpdateAbilities();
             }
         }
-        player.setInvisible(false);
         player.setAbsorptionAmount(0.0F);
         // 回收万藏：移除动态通用槽修饰符
         OLD_WOUNDS.remove(player.getUUID()); // 离开形态：清空自身旧伤记忆
@@ -439,6 +440,41 @@ public final class HeTrueEffects {
         for (ItemStack stack : stacks) {
             if (!stack.isEmpty() && stack.isDamageableItem() && stack.getDamageValue() > 0) {
                 stack.setDamageValue(0);
+            }
+        }
+    }
+
+    /**
+     * 万法附魔：把玩家「身上穿戴(护甲/主副手) + 背包内」全部可附魔物品，永久写入
+     * 它所能附上的每一种正面附魔（最高等级），并忽略附魔之间的冲突（Sharpness 与
+     * Smite 可同存、Protection 全系同存等）。每 20 tick 幂等刷新一次，对已满级物品
+     * 不重复写入 NBT。
+     *
+     * <p>注意：这是"永久写入"（库存物品本体被改），脱下真者祂后附魔仍保留。
+     * 不触碰不可附魔物品（书/食物/方块等 {@code canEnchant} 为 false 的不理）。
+     */
+    private static void applyDivineEnchantments(Player player) {
+        java.util.ArrayList<ItemStack> stacks = new java.util.ArrayList<>(player.getInventory().items);
+        stacks.addAll(player.getInventory().armor);
+        stacks.add(player.getOffhandItem());
+        for (ItemStack stack : stacks) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            java.util.Map<Enchantment, Integer> existing = EnchantmentHelper.getEnchantments(stack);
+            java.util.Map<Enchantment, Integer> desired = new java.util.HashMap<>(existing);
+            for (Enchantment enchantment : net.minecraftforge.registries.ForgeRegistries.ENCHANTMENTS) {
+                if (enchantment == null || enchantment.isCurse()) {
+                    continue; // 只加正面附魔（排除诅咒）
+                }
+                if (!enchantment.canEnchant(stack)) {
+                    continue; // 该物品附不上
+                }
+                desired.put(enchantment, enchantment.getMaxLevel());
+            }
+            // 仅当确有新增或等级提升时才写 NBT，避免每 tick 重复序列化
+            if (!desired.equals(existing)) {
+                EnchantmentHelper.setEnchantments(desired, stack);
             }
         }
     }

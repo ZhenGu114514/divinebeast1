@@ -33,11 +33,12 @@ import java.util.List;
  *       每玩家独立 try、异常改为限频日志；圆环叠加多层细线并外扩一圈以保证可见。</li>
  * </ul>
  *
- * <p>圆环平面始终竖直（垂直于地面），法向取玩家水平朝向；圆心放在脑后。
- * 当前玩家可能同时满足多个体系形态（衪系 + 兽系），每个形态各画一环、半径逐层外扩。
+ * <p>圆环平面始终竖直（垂直于地面），法向取玩家本体水平朝向（yBodyRot，跟随本体转向、
+ * 不随视角/镜头旋转）；圆心放在脑后、整体上移 1/4 格。低阶形态（衪/兽）各画一个大环，
+ * 半径逐层外扩；证悟系（祂者初/极/真）不覆盖低阶，而是画成等比缩小、更向内、中心在大环
+ * 上方 1/4 格的小环，环上的小圆与光线绕中心旋转（数量 = 已装备下级饰品数）。
  *
- * <p>环参照"诡厄巫法：终末之环"的表现（参考图）：竖直大圆环为中心，
- * 环心有一枚发光光球，竖直平面内向外放射光芒线。全程用线条建模、无粒子。
+ * <p>每个环 = 1 条粗线 + 2 条细线，全部用线条建模、无粒子。
  * 形态颜色暂时为占位色，后续按"名字颜色"替换。
  *
  * <p>纯客户端渲染、无网络同步；Curios 调用全部以全限定名写在 curiosLoaded
@@ -54,33 +55,39 @@ public final class OrbitAuraClient {
     private static boolean visible = true;
 
     /** 圆心相对头部中心向后（脑后方向）的偏移（格）。 */
-    private static final double CENTER_BACK = 0.6D;
-    /** 最内圈圆环半径（格）。 */
-    private static final double RING_BASE = 0.95D;
-    /** 多形态共存时每层环的半径增量（格）。 */
-    private static final double RING_STEP = 0.5D;
-    /** 每圈叠加的细线层数（半径微偏移多重线束，模拟更醒目的粗环）。 */
-    private static final int LINE_PASSES = 7;
-    /** 多重线束相邻半径间距（格），越大环越粗。 */
-    private static final double LINE_SPREAD = 0.04D;
+    private static final double CENTER_BACK = 0.5D;
+    /** 大环中心相对头部中心向上偏移（格）。 */
+    private static final double CENTER_UP = 0.25D;
+    /** 最内圈大环半径（格）。 */
+    private static final double RING_BASE = 0.72D;
+    /** 多形态共存时每层大环的半径增量（格）。 */
+    private static final double RING_STEP = 0.42D;
+    /** 证悟小环半径（相对最小的低阶大环，等比缩小、更小一号）。 */
+    private static final double SMALL_RING_RADIUS = 0.38D;
+    /** 证悟小环中心相对大环中心向上偏移（格）。 */
+    private static final double SMALL_RING_UP = 0.25D;
+    /** 证悟小环相对大环更向内（脑后偏移更小，即更靠近本体）。 */
+    private static final double SMALL_RING_BACK = 0.18D;
+    /** 每圈"粗线"叠加的细线层数（同半径微偏移 → 视觉成粗壮发光环带）。 */
+    private static final int THICK_PASSES = 5;
+    /** 粗线带相邻半径间距（格，越小越实心）。 */
+    private static final double THICK_SPREAD = 0.006D;
+    /** 两条细线相对主环半径的偏移（格）。 */
+    private static final double THIN_OFFSET = 0.05D;
     /** 圆环分段数（越大越圆）。 */
     private static final int RING_SEGMENTS = 96;
     /** 圆环中心高度（格，头部中心）。 */
     private static final double HEAD_CENTER_Y = 1.42D;
+    /** 小圆环绕大圆圆心转动的角速度（弧度/tick）。 */
+    private static final double ORBIT_SPEED = 0.12D;
+    /** 证悟小环上"小圆"的半径（格）。 */
+    private static final double ORBIT_DOT_RADIUS = 0.05D;
 
-    // ---- 终末之环式样（参考图：主环 + 中心光球 + 放射光芒线，全部线条建模、无粒子） ----
+    // ---- 中心光球（仅证悟小环）----
     /** 中心光球半径占该环半径的比例。 */
     private static final double CORE_FRAC = 0.16D;
     /** 中心光球同心光环数（内白外色，模拟发光光晕）。 */
     private static final int CORE_RINGS = 3;
-    /** 放射光芒线数量（竖直环平面内，0=正上方，8 条含上下左右+斜角）。 */
-    private static final int RAYS = 8;
-    /** 光芒线向外延伸长度系数（相对环半径）。 */
-    private static final double SPIKE_SCALE = 1.45D;
-    /** 光芒线内侧段（核缘→环）透明度。 */
-    private static final float SPIKE_INNER_ALPHA = 0.85F;
-    /** 光芒线外侧段（环→外伸）透明度。 */
-    private static final float SPIKE_OUTER_ALPHA = 0.5F;
     /** 只对本地玩家渲染（他人 Curios 数据客户端不可靠）。 */
     private static final boolean ONLY_LOCAL = true;
     /** 异常日志限频间隔（tick）。 */
@@ -109,25 +116,28 @@ public final class OrbitAuraClient {
     // 形态
     // ==================================================================
 
-    /** 玩家可处于的八种形态（自·我 = 兽七法则齐，用户要求补上）。 */
+    /** 玩家可处于的形态（自·我 = 兽七法则齐，用户要求补上）。 */
     private enum Form {
-        DEITY_CURSE("衪诅咒", 1.0F, 0.25F, 0.1F),
-        DEITY_REDEEM("衪救赎", 1.0F, 0.8F, 0.1F),
-        BEAST_CURSE("兽诅咒", 0.4F, 0.2F, 0.9F),
-        BEAST_SALVATION("兽拯救", 0.95F, 0.1F, 0.95F),
-        BEAST_SELF("自·我", 1.0F, 0.85F, 0.0F),
-        HE_FIRST("祂者初", 0.6F, 0.9F, 1.0F),
-        HE_EXTREME("祂者极", 0.3F, 0.6F, 1.0F),
-        HE_TRUE("真者祂", 1.0F, 1.0F, 1.0F);
+        DEITY_CURSE("衪诅咒", 1.0F, 0.25F, 0.1F, false),
+        DEITY_REDEEM("衪救赎", 1.0F, 0.8F, 0.1F, false),
+        BEAST_CURSE("兽诅咒", 0.4F, 0.2F, 0.9F, false),
+        BEAST_SALVATION("兽拯救", 0.95F, 0.1F, 0.95F, false),
+        BEAST_SELF("自·我", 1.0F, 0.85F, 0.0F, false),
+        HE_FIRST("祂者初", 0.6F, 0.9F, 1.0F, true),
+        HE_EXTREME("祂者极", 0.3F, 0.6F, 1.0F, true),
+        HE_TRUE("真者祂", 1.0F, 1.0F, 1.0F, true);
 
         final String display;
         final float r, g, b;
+        /** 证悟系（祂者初/极/真）：等比缩小、叠在低阶环外或内、绕心旋转的小环。 */
+        final boolean awakening;
 
-        Form(String display, float r, float g, float b) {
+        Form(String display, float r, float g, float b, boolean awakening) {
             this.display = display;
             this.r = r;
             this.g = g;
             this.b = b;
+            this.awakening = awakening;
         }
     }
 
@@ -157,7 +167,7 @@ public final class OrbitAuraClient {
         return !findWorn(p, item).isEmpty();
     }
 
-    /** 当前玩家的全部"已达成形态"（可同时含衪系/兽系/证悟系各一）。 */
+    /** 当前玩家的全部"已达成形态"。证悟系（祂者初/极/真）与低阶环共存、不覆盖。 */
     private static List<Form> detectForms(Player player) {
         List<Form> forms = new ArrayList<>();
         if (!CompatChecks.curiosLoaded()) {
@@ -188,27 +198,10 @@ public final class OrbitAuraClient {
                 }
             }
 
-            // 证悟系（优先度最高：同时达成衪救赎+兽自·我后获得祂者初，随后进阶）
-            if (has(player, ModItems.HE_TRUE.get())) {
-                forms.add(Form.HE_TRUE);
-                return forms;
-            }
-            if (has(player, ModItems.HE_EXTREME.get())) {
-                forms.add(Form.HE_EXTREME);
-                return forms;
-            }
-            if (has(player, ModItems.HE_FIRST.get())) {
-                forms.add(Form.HE_FIRST);
-                return forms;
-            }
-
+            // 证悟系：与低阶环共存（不覆盖），先加低阶大环，后加证悟小环
             // 衪系：救赎 = 佩戴祂且五时刻齐
             if (deity) {
-                if (moments >= 5) {
-                    forms.add(Form.DEITY_REDEEM);
-                } else {
-                    forms.add(Form.DEITY_CURSE);
-                }
+                forms.add(moments >= 5 ? Form.DEITY_REDEEM : Form.DEITY_CURSE);
             }
             // 兽系：自·我(七法则) / 拯救(六法则无自我) / 诅咒
             if (beast) {
@@ -219,6 +212,14 @@ public final class OrbitAuraClient {
                 } else {
                     forms.add(Form.BEAST_CURSE);
                 }
+            }
+            // 证悟低阶大环最小也要小一号（见 renderOne），证悟小环叠于其上
+            if (has(player, ModItems.HE_TRUE.get())) {
+                forms.add(Form.HE_TRUE);
+            } else if (has(player, ModItems.HE_EXTREME.get())) {
+                forms.add(Form.HE_EXTREME);
+            } else if (has(player, ModItems.HE_FIRST.get())) {
+                forms.add(Form.HE_FIRST);
             }
             return forms;
         } catch (Throwable t) {
@@ -238,8 +239,9 @@ public final class OrbitAuraClient {
         return new Vec3(hx, hy, hz);
     }
 
+    /** 用玩家本体水平朝向（yBodyRot）而非镜头朝向（getYRot）→ 环跟随本体转向、不随视角旋转。 */
     private static Vec3 horizontalFacing(Player p) {
-        double yaw = Math.toRadians(p.getYRot());
+        double yaw = Math.toRadians(p.yBodyRot);
         return new Vec3(-Math.sin(yaw), 0.0D, Math.cos(yaw)).normalize();
     }
 
@@ -316,20 +318,44 @@ public final class OrbitAuraClient {
         float partialTick = event.getPartialTick();
         Vec3 head = headCenter(target, partialTick);
         Vec3 facing = horizontalFacing(target);
-        Vec3 center = head.add(facing.scale(-CENTER_BACK));
 
         PoseStack pose = event.getPoseStack();
         pose.pushPose();
         MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         try {
-            int formIndex = 0;
+            int subCount = equippedSubCount(target);
+            // 1) 低阶大环：半径逐层外扩，圆心在脑后、上移
+            int bigIndex = 0;
             for (Form form : forms) {
+                if (form.awakening) {
+                    continue; // 证悟系小环单独绘制
+                }
                 try {
-                    double radius = RING_BASE + formIndex * RING_STEP;
-                    renderRing(pose, buffers, cam, center, facing, radius, form);
-                    formIndex++;
+                    double radius = RING_BASE + bigIndex * RING_STEP;
+                    Vec3 center = head.add(facing.scale(-CENTER_BACK)).add(0.0D, CENTER_UP, 0.0D);
+                    renderRing(pose, buffers, cam, center, facing, radius, form, gameTime, subCount, false);
+                    bigIndex++;
                 } catch (Throwable t) {
                     logThrottledError("渲染 " + form.display + " 圆环异常", t);
+                }
+            }
+            // 2) 证悟小环：等比更小、平行、更向内、中心在大环上方 1/4 格
+            int smallIndex = 0;
+            for (Form form : forms) {
+                if (!form.awakening) {
+                    continue;
+                }
+                try {
+                    double radius = SMALL_RING_RADIUS - smallIndex * RING_STEP * 0.3D;
+                    if (radius < 0.12D) {
+                        radius = 0.12D;
+                    }
+                    Vec3 center = head.add(facing.scale(-SMALL_RING_BACK))
+                            .add(0.0D, CENTER_UP + SMALL_RING_UP, 0.0D);
+                    renderRing(pose, buffers, cam, center, facing, radius, form, gameTime, subCount, true);
+                    smallIndex++;
+                } catch (Throwable t) {
+                    logThrottledError("渲染 " + form.display + " 小环异常", t);
                 }
             }
             buffers.endBatch();
@@ -338,54 +364,104 @@ public final class OrbitAuraClient {
         }
     }
 
+    /** 已装备的下级饰品数量（用于计算小圆数量）。 */
+    private static int equippedSubCount(Player player) {
+        int count = 0;
+        if (!CompatChecks.curiosLoaded()) {
+            return count;
+        }
+        try {
+            java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
+                    top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).resolve();
+            if (optional.isPresent()) {
+                for (top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler stacksHandler
+                        : optional.get().getCurios().values()) {
+                    net.minecraftforge.items.IItemHandlerModifiable stacks = stacksHandler.getStacks();
+                    if (stacks == null) {
+                        continue;
+                    }
+                    for (int i = 0; i < stacks.getSlots(); i++) {
+                        ItemStack stack = stacks.getStackInSlot(i);
+                        if (stack != null && !stack.isEmpty()) {
+                            count++;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            logThrottledError("统计饰品数量失败", t);
+        }
+        return count;
+    }
+
     /**
-     * 终末之环式样：竖直大圆环（垂直于地面）+ 中心发光光球 + 放射光芒线。
+     * 圆环：竖直主环（垂直于地面）。主环 = 1 条粗线（多道紧贴的细线叠加成粗环带）+ 2 条细线。
+     * 证悟小环在此基础上额外画「沿环等距、绕玄环中心旋转的小圆与线条」。
      * 全部用 {@code RenderType.lines()} 线条建模，不使用粒子。
      */
     private static void renderRing(PoseStack pose, MultiBufferSource.BufferSource buffers,
                                    Vec3 cam, Vec3 center, Vec3 facing,
-                                   double radius, Form form) {
+                                   double radius, Form form, long gameTime,
+                                   int subCount, boolean isSmall) {
         Vec3[] basis = ringBasis(facing);
         VertexConsumer consumer = buffers.getBuffer(RenderType.lines());
         pose.pushPose();
         pose.translate(center.x - cam.x, center.y - cam.y, center.z - cam.z);
 
-        // 1) 主环：多重线束（中心亮线 + 两侧渐淡线），半径微偏移 → 视觉成粗壮发光环
-        int centerPass = LINE_PASSES / 2;
-        for (int pass = 0; pass < LINE_PASSES; pass++) {
-            float a = pass == centerPass ? 1.0F : (pass == centerPass - 1 || pass == centerPass + 1 ? 0.7F : 0.45F);
-            double r = radius + (pass - centerPass) * LINE_SPREAD;
+        // 1) 主环：一条粗线 = 多道紧贴线束（THICK_PASSES 道，半径微偏移 → 视觉粗壮）
+        for (int pass = 0; pass < THICK_PASSES; pass++) {
+            double r = radius + (pass - (THICK_PASSES - 1) / 2.0D) * THICK_SPREAD;
+            float a = 1.0F - Math.abs(pass - (THICK_PASSES - 1) / 2.0D) * 0.12F;
             drawCircle(consumer, pose, basis, r, form.r, form.g, form.b, a);
         }
+        // 2) 两条细线：主环两侧各一根细亮线（居中偏白，突出轮廓）
+        float thinM = 0.25F;
+        drawCircle(consumer, pose, basis, radius + THIN_OFFSET,
+                blend(form.r, thinM), blend(form.g, thinM), blend(form.b, thinM), 0.6F);
+        drawCircle(consumer, pose, basis, radius - THIN_OFFSET,
+                blend(form.r, thinM), blend(form.g, thinM), blend(form.b, thinM), 0.6F);
 
-        // 2) 中心光球：同心光环，内圈偏白（发光核心）、外圈渐变为形态色
-        double core = radius * CORE_FRAC;
-        for (int pass = 0; pass < CORE_RINGS; pass++) {
-            double r = core * (pass + 1.0D) / CORE_RINGS;
-            float a = 1.0F - pass * 0.26F;          // 越外越淡
-            float m = 1.0F - pass * 0.34F;          // 混合白度的权重：内白外色
-            float cr = blend(form.r, m);
-            float cg = blend(form.g, m);
-            float cb = blend(form.b, m);
-            drawCircle(consumer, pose, basis, r, cr, cg, cb, a);
-        }
-
-        // 3) 放射光芒线：竖直环平面内从核缘向外放射（0=正上，8 条含斜角）
-        for (int ray = 0; ray < RAYS; ray++) {
-            double ang = (Math.PI * 2.0D * ray) / RAYS;
-            double rIn = core * 0.6D;                    // 核缘内侧起点
-            double rOut = radius * SPIKE_SCALE;          // 外伸终点（越过环）
-            Vec3 p0 = ringPoint(basis, rIn, ang);
-            Vec3 p1 = ringPoint(basis, radius, ang);
-            Vec3 p2 = ringPoint(basis, rOut, ang);
-            // 内段（核缘→环）：亮、偏白
-            float mi = 0.35F;
-            line(consumer, pose, p0, p1, blend(form.r, mi), blend(form.g, mi), blend(form.b, mi), SPIKE_INNER_ALPHA);
-            // 外段（环→外伸）：形态色、稍淡
-            line(consumer, pose, p1, p2, form.r, form.g, form.b, SPIKE_OUTER_ALPHA);
+        // 3) 证悟小环：中心光球 + 绕中心旋转的小圆与光线（数量 = 已装备下级饰品数）
+        if (isSmall) {
+            double core = radius * CORE_FRAC;
+            for (int pass = 0; pass < CORE_RINGS; pass++) {
+                double r = core * (pass + 1.0D) / CORE_RINGS;
+                float a = 1.0F - pass * 0.26F;
+                float m = 1.0F - pass * 0.34F;
+                drawCircle(consumer, pose, basis, r, blend(form.r, m), blend(form.g, m), blend(form.b, m), a);
+            }
+            float orbitM = 0.2F; // 装饰元素略偏白提亮
+            float or = blend(form.r, orbitM);
+            float og = blend(form.g, orbitM);
+            float ob = blend(form.b, orbitM);
+            int n = Math.max(1, Math.min(subCount, 12));
+            for (int k = 0; k < n; k++) {
+                double ang = ORBIT_SPEED * gameTime + (Math.PI * 2.0D * k) / n;
+                // 小圆：位于主环上的一个小圆环点
+                Vec3 p = ringPoint(basis, radius, ang);
+                drawTinyCircle(consumer, pose, basis, p, ORBIT_DOT_RADIUS, or, og, ob, 0.9F);
+                // 光线：从环心沿该角度延伸到环上一点（绕心旋转的芒线）
+                Vec3 q0 = ringPoint(basis, radius * 0.15D, ang);
+                line(consumer, pose, q0, p, or, og, ob, 0.5F);
+            }
         }
 
         pose.popPose();
+    }
+
+    /** 以小点 p 为圆心、在竖直环平面上画一个极细小的圆（用于"小圆"装饰）。 */
+    private static void drawTinyCircle(VertexConsumer consumer, PoseStack pose, Vec3[] basis,
+                                       Vec3 p, double dotRadius, float r, float g, float b, float a) {
+        int seg = 8;
+        for (int i = 0; i < seg; i++) {
+            double a0 = (Math.PI * 2.0D * i) / seg;
+            double a1 = (Math.PI * 2.0D * (i + 1)) / seg;
+            Vec3 c0 = p.add(basis[0].scale(Math.cos(a0) * dotRadius))
+                    .add(basis[1].scale(Math.sin(a0) * dotRadius));
+            Vec3 c1 = p.add(basis[0].scale(Math.cos(a1) * dotRadius))
+                    .add(basis[1].scale(Math.sin(a1) * dotRadius));
+            line(consumer, pose, c0, c1, r, g, b, a);
+        }
     }
 
     /** 在竖直环平面上画一整圈细线。 */
