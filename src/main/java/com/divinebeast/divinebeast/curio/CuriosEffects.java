@@ -81,6 +81,8 @@ public final class CuriosEffects {
     private static final UUID HE_FIRST_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a1");
     private static final UUID HE_EXTREME_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a2");
     private static final UUID HE_TRUE_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a3");
+    private static final UUID REDEMPTION_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a4");
+    private static final UUID TRUEHEART_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a5");
     private static final String ADV_REDEMPTION_TAG = "divinebeast.adv.deity_redemption";
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
@@ -726,10 +728,12 @@ public final class CuriosEffects {
         }
     }
 
-    /** 证悟阶段槽：按 AscensionEffects.stageOf 解锁 he_first / he_extreme / he_true（transient slot modifier）。
+    /** 证悟阶段槽：按 AscensionEffects.stageOf 解锁 he_first / he_extreme / he_true，
+     *  redemption / trueheart 则跟随核心是否正佩戴（穿 祂者初 → 救赎槽开；
+     *  穿 祂者极 → 本心槽开；销毁/离槽即关）。
      *  <p>无状态自愈式：想要就无条件 add（同一 UUID 幂等覆盖），不想要就无条件 removeSlotModifiers
      *  （modifier 不存在时无副作用）。不依赖任何内存记忆集，因此跨维度/重生/换实体后，
-     *  只要下一个服务端 tick 运行即可把槽位状态收敛到当前阶段。 */
+     *  只要下一个服务端 tick 运行即可把槽位状态收敛到当前佩戴/阶段。 */
     private static void syncAscensionSlots(Player player) {
         int stage = AscensionEffects.stageOf(player);
         java.util.Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
@@ -738,7 +742,9 @@ public final class CuriosEffects {
         }
         ICuriosItemHandler handler = optional.get();
         syncOneSlot(handler, "he_first", stage == 1, HE_FIRST_SLOT_MOD);
+        syncOneSlot(handler, "redemption", AscensionEffects.wearingHeFirst(player), REDEMPTION_SLOT_MOD);
         syncOneSlot(handler, "he_extreme", stage == 2, HE_EXTREME_SLOT_MOD);
+        syncOneSlot(handler, "trueheart", AscensionEffects.wearingHeExtreme(player), TRUEHEART_SLOT_MOD);
         syncOneSlot(handler, "he_true", stage == 3, HE_TRUE_SLOT_MOD);
     }
 

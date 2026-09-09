@@ -198,11 +198,10 @@ public final class CuriosCompat {
                 unlockedSlots = DEITY_UNLOCKED_SLOTS;
             } else if (item == ModItems.BEAST.get()) {
                 unlockedSlots = BEAST_UNLOCKED_SLOTS;
-            } else if (item == ModItems.HE_FIRST.get()) {
-                unlockedSlots = new String[]{"redemption"};   // 祂者初 → 解锁「救赎」槽
-            } else if (item == ModItems.HE_EXTREME.get()) {
-                unlockedSlots = new String[]{"trueheart"};    // 祂者极 → 解锁「本心」槽
             }
+            // 证悟链：redemption / trueheart 槽不再由 祂者初/祂者极 的物品级修饰符解锁，
+            // 改由 CuriosEffects.syncAscensionSlots 每 tick 按"是否佩戴核心"显式同步，
+            // 确保销毁/离槽后槽位必然回收（物品级解锁的自动移除在销毁路径上不可靠）。
             if (unlockedSlots != null) {
                 for (String slotId : unlockedSlots) {
                     // amount=1：佩戴期间为每个槽位临时增加 1 格；卸下自动移除
