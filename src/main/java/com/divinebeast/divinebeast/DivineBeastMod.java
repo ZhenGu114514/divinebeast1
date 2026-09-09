@@ -6,6 +6,7 @@ import com.divinebeast.divinebeast.curio.BeastEffects;
 import com.divinebeast.divinebeast.curio.AscensionEffects;
 import com.divinebeast.divinebeast.curio.CuriosCompat;
 import com.divinebeast.divinebeast.curio.CuriosEffects;
+import com.divinebeast.divinebeast.curio.HeTrueEffects;
 import com.divinebeast.divinebeast.curio.MomentEffects;
 import com.divinebeast.divinebeast.item.ModItems;
 import com.divinebeast.divinebeast.net.Networking;
@@ -61,6 +62,7 @@ public class DivineBeastMod {
             MomentEffects.register();
             BeastEffects.register();
             AscensionEffects.register();
+            HeTrueEffects.register();
             // 碎片门槛：感知/意识/反叛 需已装备『祂者初』
             FirstChestReward.setFragmentGate(AscensionEffects::wearingHeFirst);
             // 证悟抉择界面仅客户端显示
