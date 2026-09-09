@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "本心"},
+    "description": {"text": "合成『本心』，找回自我之路"},
+    "icon": {"item": "divinebeast:true_heart"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:asc_pain",
+  "criteria": {
+    "got_true_heart": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:true_heart"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

@@ -81,9 +81,6 @@ public final class CuriosEffects {
     private static final UUID HE_FIRST_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a1");
     private static final UUID HE_EXTREME_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a2");
     private static final UUID HE_TRUE_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a3");
-    private static final java.util.Set<java.util.UUID> HE_FIRST_APPLIED = new java.util.HashSet<>();
-    private static final java.util.Set<java.util.UUID> HE_EXTREME_APPLIED = new java.util.HashSet<>();
-    private static final java.util.Set<java.util.UUID> HE_TRUE_APPLIED = new java.util.HashSet<>();
     private static final String ADV_REDEMPTION_TAG = "divinebeast.adv.deity_redemption";
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
@@ -116,6 +113,8 @@ public final class CuriosEffects {
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onMobEffectAdded);
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onTargetChange);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, CuriosEffects::onXpChange);
+        // 跨维度（含末地传送门返回主世界）后立即重建证悟阶段槽
+        MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onPlayerChangedDimension);
         LOGGER.info("[divinebeast] 『祂』效果引擎已注册（阶段一负面 ×5 / 救赎阶段）。");
     }
 
@@ -727,37 +726,43 @@ public final class CuriosEffects {
         }
     }
 
-    /** 证悟阶段槽：按 AscensionEffects.stageOf 解锁 he_first / he_extreme / he_true（transient slot modifier） */
+    /** 证悟阶段槽：按 AscensionEffects.stageOf 解锁 he_first / he_extreme / he_true（transient slot modifier）。
+     *  <p>无状态自愈式：想要就无条件 add（同一 UUID 幂等覆盖），不想要就无条件 removeSlotModifiers
+     *  （modifier 不存在时无副作用）。不依赖任何内存记忆集，因此跨维度/重生/换实体后，
+     *  只要下一个服务端 tick 运行即可把槽位状态收敛到当前阶段。 */
     private static void syncAscensionSlots(Player player) {
         int stage = AscensionEffects.stageOf(player);
-        UUID uuid = player.getUUID();
         java.util.Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isEmpty()) {
             return;
         }
         ICuriosItemHandler handler = optional.get();
-        boolean heFirstWanted = stage == 1;
-        boolean heExtremeWanted = stage == 2;
-        boolean heTrueWanted = stage == 3;
-        syncOneSlot(handler, uuid, "he_first", heFirstWanted, HE_FIRST_SLOT_MOD, HE_FIRST_APPLIED);
-        syncOneSlot(handler, uuid, "he_extreme", heExtremeWanted, HE_EXTREME_SLOT_MOD, HE_EXTREME_APPLIED);
-        syncOneSlot(handler, uuid, "he_true", heTrueWanted, HE_TRUE_SLOT_MOD, HE_TRUE_APPLIED);
+        syncOneSlot(handler, "he_first", stage == 1, HE_FIRST_SLOT_MOD);
+        syncOneSlot(handler, "he_extreme", stage == 2, HE_EXTREME_SLOT_MOD);
+        syncOneSlot(handler, "he_true", stage == 3, HE_TRUE_SLOT_MOD);
     }
 
-    private static void syncOneSlot(ICuriosItemHandler handler, UUID uuid, String slotId, boolean wanted,
-                                    UUID modUuid, java.util.Set<java.util.UUID> appliedSet) {
-        boolean applied = appliedSet.contains(uuid);
+    private static void syncOneSlot(ICuriosItemHandler handler, String slotId, boolean wanted,
+                                    UUID modUuid) {
         com.google.common.collect.Multimap<String, AttributeModifier> map = com.google.common.collect.LinkedHashMultimap.create();
         map.put(slotId, new AttributeModifier(modUuid, "divinebeast_" + slotId, 1.0D,
                 AttributeModifier.Operation.ADDITION));
-        // transient modifier 以 uuid 幂等覆盖：重登/换实体后补加无需依赖集合记忆
         if (wanted) {
             handler.addTransientSlotModifiers(map);
-            appliedSet.add(uuid);
-        } else if (applied) {
+        } else {
             handler.removeSlotModifiers(map);
-            appliedSet.remove(uuid);
         }
+    }
+
+    /** 玩家更换维度（如经末地传送门从末地返回主世界）后，立即强制重同步证悟槽位。
+     *  Curios 的 transient 修饰符在跨维度/实体重载后可能被清除，这里在下个服务端 tick
+     *  前（事件同刻，紧接普通 tick 同步）再补一次，避免槽栏短暂退回旧阶段。 */
+    private static void onPlayerChangedDimension(net.minecraftforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent event) {
+        net.minecraft.world.entity.player.Player player = event.getEntity();
+        if (player == null || player.level().isClientSide) {
+            return;
+        }
+        syncAscensionSlots(player);
     }
 
     /** 供客户端 tooltip：某件时刻饰品是否已佩戴（其诅咒已解除） */

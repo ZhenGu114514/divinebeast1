@@ -337,7 +337,12 @@ public final class AscensionEffects {
             migrated = true;
         }
         // 无论是否迁移：复活到出生点（若用户选普通重生则不迁移但同样回出生点）
-        com.divinebeast.divinebeast.net.AscensionEffectsNoCurios.revive(player);
+        if (migrated) {
+            // 证悟迁移：若身处地狱/末地，强制返回主世界出生点
+            com.divinebeast.divinebeast.net.AscensionEffectsNoCurios.reviveHome(player);
+        } else {
+            com.divinebeast.divinebeast.net.AscensionEffectsNoCurios.revive(player);
+        }
         player.setInvulnerable(false);
         if (!migrated && kind != AscensionScreenMessage.KIND_REDEMPTION
                 && kind != AscensionScreenMessage.KIND_TRUE_HEART) {

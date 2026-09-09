@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "吞噬"},
+    "description": {"text": "获得法则『吞噬』——行于混沌，吞噬混沌"},
+    "icon": {"item": "divinebeast:devour"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_first",
+  "criteria": {
+    "got_devour": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:devour"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

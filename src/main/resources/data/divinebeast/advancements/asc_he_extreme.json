@@ -1,0 +1,24 @@
+{
+  "display": {
+    "title": {"text": "祂者极"},
+    "description": {"text": "舍弃『祂者初』与『救赎』，证得『祂者极』"},
+    "icon": {"item": "divinebeast:he_extreme"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:asc_redemption",
+  "criteria": {
+    "got_he_extreme": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:he_extreme"]}]
+      }
+    }
+  },
+  "rewards": {
+    "recipes": [
+      "divinebeast:craft_true_heart"
+    ]
+  }
+}

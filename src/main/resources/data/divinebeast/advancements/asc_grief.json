@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "悲"},
+    "description": {"text": "首次击杀中立生物，拾取『悲』"},
+    "icon": {"item": "divinebeast:grief"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:start",
+  "criteria": {
+    "got_grief": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:grief"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

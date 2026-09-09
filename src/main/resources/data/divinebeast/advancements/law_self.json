@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "自我"},
+    "description": {"text": "获得法则『自我』——一切轮回的主角，层叠之力"},
+    "icon": {"item": "divinebeast:self"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_first",
+  "criteria": {
+    "got_self": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:self"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

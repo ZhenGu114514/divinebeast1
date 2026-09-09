@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "生命"},
+    "description": {"text": "获得法则『生命』——万生之母，恢复翻倍"},
+    "icon": {"item": "divinebeast:life"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_first",
+  "criteria": {
+    "got_life": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:life"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "混沌"},
+    "description": {"text": "获得法则『混沌』——一切终将混乱，概率重击"},
+    "icon": {"item": "divinebeast:chaos"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_first",
+  "criteria": {
+    "got_chaos": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:chaos"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

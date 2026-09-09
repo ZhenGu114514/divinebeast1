@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "伤"},
+    "description": {"text": "首次击杀敌对生物，拾取『伤』"},
+    "icon": {"item": "divinebeast:pain"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:asc_grief",
+  "criteria": {
+    "got_pain": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:pain"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

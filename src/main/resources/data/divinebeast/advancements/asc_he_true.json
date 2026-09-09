@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "真者祂"},
+    "description": {"text": "舍弃『祂者极』与本心，归于『真者祂』"},
+    "icon": {"item": "divinebeast:he_true"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:asc_he_extreme",
+  "criteria": {
+    "got_he_true": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:he_true"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

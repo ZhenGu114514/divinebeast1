@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "感知"},
+    "description": {"text": "在主世界首个箱子中寻得『感知』"},
+    "icon": {"item": "divinebeast:perception"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:asc_he_first",
+  "criteria": {
+    "got_perception": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:perception"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

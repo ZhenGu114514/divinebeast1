@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "反叛"},
+    "description": {"text": "在末地首个箱子中寻得『反叛』"},
+    "icon": {"item": "divinebeast:rebellion"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:asc_consciousness",
+  "criteria": {
+    "got_rebellion": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:rebellion"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

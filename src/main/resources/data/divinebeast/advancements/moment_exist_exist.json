@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "已存在存在时刻"},
+    "description": {"text": "获得『已存在存在时刻』——药水增益与存取之力"},
+    "icon": {"item": "divinebeast:exist_exist"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:divine_first",
+  "criteria": {
+    "got_exist_exist": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:exist_exist"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

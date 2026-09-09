@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "不存在不存在时刻"},
+    "description": {"text": "获得『不存在不存在时刻』——佩戴可保生命/经验/耐久/护甲不降"},
+    "icon": {"item": "divinebeast:nonexist_nonexist"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:divine_first",
+  "criteria": {
+    "got_nonexist_nonexist": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:nonexist_nonexist"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

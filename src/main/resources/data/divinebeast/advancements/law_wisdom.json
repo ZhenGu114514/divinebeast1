@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "智慧"},
+    "description": {"text": "获得法则『智慧』——减伤与免伤，知过去未来"},
+    "icon": {"item": "divinebeast:wisdom"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_first",
+  "criteria": {
+    "got_wisdom": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:wisdom"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

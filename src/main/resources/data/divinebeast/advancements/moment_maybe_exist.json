@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "可能存在存在时刻"},
+    "description": {"text": "获得『可能存在存在时刻』——受击 90% 概率完全免伤"},
+    "icon": {"item": "divinebeast:maybe_exist"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:divine_first",
+  "criteria": {
+    "got_maybe_exist": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:maybe_exist"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

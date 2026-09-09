@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "不存在存在时刻"},
+    "description": {"text": "获得『不存在存在时刻』——禁疗与真伤反噬"},
+    "icon": {"item": "divinebeast:nonexist_exist"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:divine_first",
+  "criteria": {
+    "got_nonexist_exist": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:nonexist_exist"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

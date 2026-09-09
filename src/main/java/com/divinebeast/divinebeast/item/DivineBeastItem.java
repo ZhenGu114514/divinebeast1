@@ -83,14 +83,57 @@ public class DivineBeastItem extends Item {
         } else if (stack.is(ModItems.SAMSARA.get())) {
             tooltip.add(Component.translatable("item.divinebeast.samsara.lore")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.HE_FIRST.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.he_first.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.PERCEPTION.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.perception.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.CONSCIOUSNESS.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.consciousness.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.REBELLION.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.rebellion.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.REDEMPTION.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.redemption.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.HE_EXTREME.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.he_extreme.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.GRIEF.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.grief.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.PAIN.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.pain.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.TRUE_HEART.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.true_heart.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.HE_TRUE.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.he_true.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
         // 效果描述：非核心物品始终显示；核心物品由 CuriosCompat 按阶段动态显示
         //（无 Curios 时用通用描述兜底，避免诅咒阶段剧透后续阶段效果）
         boolean dynamicCore = level != null && level.isClientSide && CompatChecks.curiosLoaded()
                 && (stack.is(ModItems.DEITY.get()) || stack.is(ModItems.BEAST.get()));
+        // 证悟五阶段饰品：正常只显示文本(lore)，按住 Shift 才显示效果描述
+        boolean stageTrinket = stack.is(ModItems.HE_FIRST.get())
+                || stack.is(ModItems.REDEMPTION.get())
+                || stack.is(ModItems.HE_EXTREME.get())
+                || stack.is(ModItems.TRUE_HEART.get())
+                || stack.is(ModItems.HE_TRUE.get());
         if (!dynamicCore) {
-            tooltip.add(Component.translatable(stack.getDescriptionId() + ".desc")
-                    .withStyle(ChatFormatting.GRAY));
+            boolean shiftDown = level != null && level.isClientSide
+                    && net.minecraft.client.gui.screens.Screen.hasShiftDown();
+            if (stageTrinket && !shiftDown) {
+                tooltip.add(Component.translatable("divinebeast.tooltip.shift_hint")
+                        .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+            } else {
+                tooltip.add(Component.translatable(stack.getDescriptionId() + ".desc")
+                        .withStyle(ChatFormatting.GRAY));
+            }
         }
     }
 }

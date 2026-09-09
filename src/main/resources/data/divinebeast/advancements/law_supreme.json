@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "至高"},
+    "description": {"text": "获得法则『至高』——真伤叠层，轮回之中至高之神"},
+    "icon": {"item": "divinebeast:supreme"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_first",
+  "criteria": {
+    "got_supreme": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:supreme"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

@@ -1,0 +1,24 @@
+{
+  "display": {
+    "title": {"text": "祂者初"},
+    "description": {"text": "获得『祂者初』，证悟之始"},
+    "icon": {"item": "divinebeast:he_first"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:start",
+  "criteria": {
+    "got_he_first": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:he_first"]}]
+      }
+    }
+  },
+  "rewards": {
+    "recipes": [
+      "divinebeast:craft_redemption"
+    ]
+  }
+}

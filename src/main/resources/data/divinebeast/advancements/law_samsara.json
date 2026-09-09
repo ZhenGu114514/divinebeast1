@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "轮回"},
+    "description": {"text": "获得法则『轮回』——四纪元终达毁灭，死亡新生"},
+    "icon": {"item": "divinebeast:samsara"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:beast_first",
+  "criteria": {
+    "got_samsara": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:samsara"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

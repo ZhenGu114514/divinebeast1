@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "意识"},
+    "description": {"text": "在下界首个箱子中寻得『意识』"},
+    "icon": {"item": "divinebeast:consciousness"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:asc_perception",
+  "criteria": {
+    "got_consciousness": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:consciousness"]}]
+      }
+    }
+  },
+  "rewards": {}
+}

@@ -1,0 +1,20 @@
+{
+  "display": {
+    "title": {"text": "救赎"},
+    "description": {"text": "合成『救赎』，自我救赎之路"},
+    "icon": {"item": "divinebeast:redemption"},
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "parent": "divinebeast:asc_rebellion",
+  "criteria": {
+    "got_redemption": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": ["divinebeast:redemption"]}]
+      }
+    }
+  },
+  "rewards": {}
+}
