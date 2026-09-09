@@ -12,7 +12,8 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * 客户端键位：按 C 键开关"救赎重生"；按 X 键开关真者祂「神行」移速加成。
+ * 客户端键位：按 C 键开关"救赎重生"；按 X 键开关真者祂「神行」移速加成；
+ * 按 Z 键本地开关脑后星环光环（纯客户端显示，不发网络消息）。
  * 纯客户端类，只通过 DistExecutor 在 CLIENT 侧加载。
  */
 public final class ClientKeybinds {
@@ -25,6 +26,9 @@ public final class ClientKeybinds {
     private static final KeyMapping TOGGLE_SPEED = new KeyMapping(
             "key.divinebeast.toggle_speed", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY);
 
+    private static final KeyMapping TOGGLE_AURA = new KeyMapping(
+            "key.divinebeast.toggle_aura", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
+
     private ClientKeybinds() {
     }
 
@@ -36,6 +40,7 @@ public final class ClientKeybinds {
     private static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(TOGGLE_RESPAWN);
         event.register(TOGGLE_SPEED);
+        event.register(TOGGLE_AURA);
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -47,6 +52,9 @@ public final class ClientKeybinds {
         }
         while (TOGGLE_SPEED.consumeClick()) {
             Networking.sendToServer(new ToggleSpeedMessage());
+        }
+        while (TOGGLE_AURA.consumeClick()) {
+            OrbitAuraClient.toggle();
         }
     }
 }

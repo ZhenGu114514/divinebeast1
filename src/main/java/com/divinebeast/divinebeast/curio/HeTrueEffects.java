@@ -160,6 +160,8 @@ public final class HeTrueEffects {
             refreshBuff(player, MobEffects.WATER_BREATHING, 0, 320);
             refreshBuff(player, MobEffects.FIRE_RESISTANCE, 0, 320);
             refreshBuff(player, MobEffects.MOVEMENT_SPEED, 3, 320);
+            // 89 摧岳：极高挖掘速度（高等级急迫 = 高倍率，非创造式瞬破）
+            refreshBuff(player, MobEffects.DIG_SPEED, 200, 320);
         }
         // ---- 20 神之饱足 ----
         if (player.getFoodData().getFoodLevel() < 20) {
@@ -401,7 +403,7 @@ public final class HeTrueEffects {
         for (net.minecraft.world.effect.MobEffect effect : new net.minecraft.world.effect.MobEffect[]{
                 MobEffects.DAMAGE_BOOST, MobEffects.DAMAGE_RESISTANCE, MobEffects.JUMP,
                 MobEffects.LUCK, MobEffects.REGENERATION, MobEffects.WATER_BREATHING,
-                MobEffects.FIRE_RESISTANCE, MobEffects.MOVEMENT_SPEED}) {
+                MobEffects.FIRE_RESISTANCE, MobEffects.MOVEMENT_SPEED, MobEffects.DIG_SPEED}) {
             if (player.getEffect(effect) != null
                     && player.getEffect(effect).getAmplifier() >= 3) {
                 player.removeEffect(effect);

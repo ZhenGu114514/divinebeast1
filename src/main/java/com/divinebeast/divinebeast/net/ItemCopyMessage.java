@@ -47,15 +47,9 @@ public class ItemCopyMessage {
                     || com.divinebeast.divinebeast.curio.AscensionEffects.effectsDisabled(player)) {
                 return;
             }
-            // 只复制背包中真实存在的物品类型（防凭空刷出未知物品）
-            boolean has = false;
-            for (ItemStack s : player.getInventory().items) {
-                if (!s.isEmpty() && s.is(message.stack.getItem())) {
-                    has = true;
-                    break;
-                }
-            }
-            if (!has) {
+            // 复制源是副手：要求副手确实持有该物品（防凭空刷出未知物品）
+            ItemStack offhand = player.getOffhandItem();
+            if (offhand.isEmpty() || !offhand.is(message.stack.getItem())) {
                 return;
             }
             ItemStack copy = message.stack.copy();

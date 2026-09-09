@@ -30,13 +30,14 @@ public class DivineBeastItem extends Item {
 
     /** 真者『祂』的正面权能数量（lore/effect 文案行数与此一致） */
     private static final int HE_TRUE_EFFECT_COUNT = 99;
-    /** 真者『祂』tooltip 每页显示的权能条数 */
-    private static final int HE_TRUE_PAGE_SIZE = 15;
     /** 翻页间隔（毫秒）：每 2 秒轮换到下一页 */
     private static final long HE_TRUE_PAGE_INTERVAL_MS = 2000L;
-    /** 总页数（99 条 / 每页 15 条 → 7 页） */
-    private static final int HE_TRUE_PAGE_TOTAL =
-            (HE_TRUE_EFFECT_COUNT + HE_TRUE_PAGE_SIZE - 1) / HE_TRUE_PAGE_SIZE;
+    /** tooltip 单行预留高度（像素，含行距） */
+    private static final int HE_TRUE_LINE_H = 10;
+    /** tooltip 顶部/底部安全边距（像素） */
+    private static final int HE_TRUE_SAFE_MARGIN = 36;
+    /** tooltip 手动换行最大宽度（像素，与游戏内常规提示宽度相当） */
+    private static final int HE_TRUE_WRAP_W = 200;
 
     public DivineBeastItem(Properties properties) {
         super(properties);
@@ -53,32 +54,74 @@ public class DivineBeastItem extends Item {
 
         // 真者『祂』专属：正常只显示诗词/叙事文本，按住 Shift 显示效果；
         // 每行颜色随秒流动（彩虹渐变，每秒整体偏移）。
-        // 99 项权能过长：每次只显示 20 项，每 2 秒轮换到下一页，到底后回到首页。
+        // 99 项权能过长且顶部叙事超长：每次轮换一页，每页条数按当前屏幕高度
+        // 自动计算（顶部长文占多少行，就只留能放下多少条），每 2 秒翻页、到底回首页。
         if (stack.is(ModItems.HE_TRUE.get())) {
             if (level != null && level.isClientSide) {
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                net.minecraft.client.gui.Font font = mc.font;
                 boolean shift = net.minecraft.client.gui.screens.Screen.hasShiftDown();
                 long sec = System.currentTimeMillis() / 1000L;
+                int screenH = mc.getWindow().getGuiScaledHeight();
+                int wrapW = Math.min(HE_TRUE_WRAP_W,
+                        Math.max(120, mc.getWindow().getGuiScaledWidth() - 48));
+                // 可用总行数（每行按 HE_TRUE_LINE_H 像素估，留出屏幕上下边距）
+                int maxLines = Math.max(15, (screenH - HE_TRUE_SAFE_MARGIN) / HE_TRUE_LINE_H);
+                // 顶部叙事在“诗词”视图出现，按住 Shift 只列效果，不占这几十行
+                String headerKey = shift ? null : "item.divinebeast.he_true.lore";
+                int headerLines = headerKey == null ? 0
+                        : wrappedLineCount(Component.translatable(headerKey).getString(), font, wrapW);
+                int footerLines = 1; // 页码
+                int budget = maxLines - headerLines - footerLines;
+                // 每条约 2 行（诗两句各一行/效果一般一行），据此决定每页条数
+                int linesPerItem = shift ? 1 : 2;
+                int pageSize = Math.max(1, budget / linesPerItem);
+                int totalPages = (HE_TRUE_EFFECT_COUNT + pageSize - 1) / pageSize;
                 int page = (int) ((System.currentTimeMillis() / HE_TRUE_PAGE_INTERVAL_MS)
-                        % HE_TRUE_PAGE_TOTAL);
-                int from = page * HE_TRUE_PAGE_SIZE + 1;
-                int to = Math.min(HE_TRUE_EFFECT_COUNT, from + HE_TRUE_PAGE_SIZE - 1);
+                        % totalPages);
+                int from = page * pageSize + 1;
+                int to = Math.min(HE_TRUE_EFFECT_COUNT, from + pageSize - 1);
+                int row = 0;
+                // 顶部超长叙事：按字体宽度拆成多行逐行取色（行宽受控，避免挤出屏幕）
+                if (headerKey != null) {
+                    row = addWrappedHueText(tooltip,
+                            Component.translatable(headerKey).getString(), row, sec, true, font, wrapW,
+                            maxLines - footerLines);
+                }
+                int usedRows = row;
                 if (!shift) {
-                    // 总起文本 + 当前页 20 项权能各一段诗词（每句一行、逐句取色）
-                    addHueLine(tooltip, "item.divinebeast.he_true.lore", 0, sec, true);
-                    int row = 1;
                     for (int i = from; i <= to; i++) {
-                        row = addPoemLines(tooltip, "item.divinebeast.he_true.lore_" + i, row, sec);
+                        int need = wrappedLineCount(
+                                Component.translatable("item.divinebeast.he_true.lore_" + i).getString(),
+                                font, wrapW);
+                        if (usedRows + need > maxLines - footerLines) {
+                            break; // 剩余行不够，等下一轮
+                        }
+                        row = addWrappedHueText(tooltip,
+                                Component.translatable("item.divinebeast.he_true.lore_" + i).getString(),
+                                row, sec, false, font, wrapW, maxLines - footerLines);
+                        usedRows = row;
                     }
-                    addHueLine(tooltip, "divinebeast.tooltip.shift_hint", row, sec, false);
+                    if (usedRows < maxLines - footerLines) {
+                        addHueLine(tooltip, "divinebeast.tooltip.shift_hint", row, sec, false);
+                    }
                 } else {
-                    int row = 0;
                     for (int i = from; i <= to; i++) {
-                        row = addPoemLines(tooltip, "item.divinebeast.he_true.effect_" + i, row, sec);
+                        int need = wrappedLineCount(
+                                Component.translatable("item.divinebeast.he_true.effect_" + i).getString(),
+                                font, wrapW);
+                        if (usedRows + need > maxLines - footerLines) {
+                            break;
+                        }
+                        row = addWrappedHueText(tooltip,
+                                Component.translatable("item.divinebeast.he_true.effect_" + i).getString(),
+                                row, sec, false, font, wrapW, maxLines - footerLines);
+                        usedRows = row;
                     }
                 }
-                // 页码提示：第 x/5 页，每 2 秒自动轮换
+                // 页码提示（永远保留在最后一行）
                 tooltip.add(Component.translatable("divinebeast.tooltip.he_true_page",
-                        page + 1, HE_TRUE_PAGE_TOTAL)
+                        page + 1, totalPages)
                         .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
             } else {
                 // 服务端等非渲染场景：普通灰色文本兜底，不引客户端类
@@ -193,15 +236,58 @@ public class DivineBeastItem extends Item {
     }
 
     /**
-     * 一段诗词/效果可含 \n 分行：逐句拆出并各自取色，返回下一个可用的行号，
-     * 保证整篇颜色呈连续彩虹梯度。
+     * 按字体宽度把一段可含 \n 的文本拆成“渲染后实际行数”：
+     * 先按 \n 分段，每段再按 wrapW 像素估算需要折行几次（用于行数预算）。
      */
-    private static int addPoemLines(List<Component> tooltip, String key, int startRow, long sec) {
+    private static int wrappedLineCount(String text, net.minecraft.client.gui.Font font, int wrapW) {
+        int lines = 0;
+        for (String seg : text.split("\n", -1)) {
+            if (!seg.isEmpty()) {
+                lines += Math.max(1, (font.width(seg) + wrapW - 1) / wrapW);
+            }
+        }
+        return Math.max(1, lines);
+    }
+
+    /**
+     * 把一段（可能超长的）文本按字体宽度拆成多行逐行加入 tooltip 并取色。
+     * limitRows > 0 时若超出限高则截断。返回下一个可用行号。
+     */
+    private static int addWrappedHueText(List<Component> tooltip, String text, int startRow,
+                                         long sec, boolean italic,
+                                         net.minecraft.client.gui.Font font, int wrapW,
+                                         int limitRows) {
         int row = startRow;
-        String text = Component.translatable(key).getString();
-        for (String line : text.split("\\n", -1)) {
-            if (!line.isEmpty()) {
-                addHueText(tooltip, line.trim(), row++, sec, false);
+        for (String seg : text.split("\n", -1)) {
+            if (seg.isEmpty()) {
+                continue;
+            }
+            seg = seg.trim();
+            int width = font.width(seg);
+            if (width <= wrapW) {
+                if (limitRows > 0 && row >= limitRows) {
+                    return row;
+                }
+                addHueText(tooltip, seg, row++, sec, italic);
+            } else {
+                // 逐段截断到 wrapW，保持按“行号”连续取色
+                StringBuilder cur = new StringBuilder();
+                for (int i = 0; i < seg.length(); i++) {
+                    if (limitRows > 0 && row >= limitRows) {
+                        return row;
+                    }
+                    cur.append(seg.charAt(i));
+                    if (font.width(cur.toString()) > wrapW) {
+                        cur.deleteCharAt(cur.length() - 1);
+                        if (cur.length() > 0) {
+                            addHueText(tooltip, cur.toString(), row++, sec, italic);
+                        }
+                        cur = new StringBuilder(String.valueOf(seg.charAt(i)));
+                    }
+                }
+                if (cur.length() > 0 && (limitRows <= 0 || row < limitRows)) {
+                    addHueText(tooltip, cur.toString(), row++, sec, italic);
+                }
             }
         }
         return row;

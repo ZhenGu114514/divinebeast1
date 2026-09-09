@@ -56,6 +56,9 @@ public class DivineBeastMod {
                 () -> () -> AutoCombatClient.init());
         DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> com.divinebeast.divinebeast.client.InventoryCopyClient.init());
+        // 脑后星环光环（Z 键本地开关）：任意客户端都注册，内部 Curios 缺失时空转
+        DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> () -> com.divinebeast.divinebeast.client.OrbitAuraClient.init());
         // FTB Quests 可选前置：装有时把内置任务书章节注入服务端 config（不引用 FTB 类）
         com.divinebeast.divinebeast.integration.FTBQuestsCompat.registerIfPresent();
 
