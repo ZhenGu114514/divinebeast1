@@ -1,10 +1,6 @@
 package com.divinebeast.divinebeast.net;
 
-import com.divinebeast.divinebeast.CompatChecks;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -12,9 +8,10 @@ import java.util.function.Supplier;
 
 /**
  * 客户端 → 服务端：#88「造化」——背包悬停格持续复制。
- * 客户端在背包界面悬停一个玩家背包物品格、按住右键并按住 Shift 时，
- * 每 0.1 秒发送一次本消息；服务端校验真者祂形态后，在玩家脚底生成
- * 一整组（可堆叠取最大堆叠数，不可堆叠为 1 个）该物品的复制品，不消耗原件。
+ *
+ * <p>「造化」复制权能已按需求移除（改为：挖掘/击杀掉落的物品与经验 ×10，见
+ * {@code HeTrueEffects}）。保留此消息类与通道注册以避免改动网络 ID，但服务端
+ * {@link #handle} 一律空转、不再生成复制品。
  */
 public class ItemCopyMessage {
 
@@ -35,29 +32,8 @@ public class ItemCopyMessage {
     public static void handle(ItemCopyMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            ServerPlayer player = context.getSender();
-            if (player == null || message.stack == null || message.stack.isEmpty()) {
-                return;
-            }
-            // 无 Curios 环境没有真者祂形态，直接忽略（不在此处解析 Curios 类）
-            if (!CompatChecks.curiosLoaded()) {
-                return;
-            }
-            if (!com.divinebeast.divinebeast.curio.AscensionEffects.wearingHeTrue(player)
-                    || com.divinebeast.divinebeast.curio.AscensionEffects.effectsDisabled(player)) {
-                return;
-            }
-            // 复制源是副手：要求副手确实持有该物品（防凭空刷出未知物品）
-            ItemStack offhand = player.getOffhandItem();
-            if (offhand.isEmpty() || !offhand.is(message.stack.getItem())) {
-                return;
-            }
-            ItemStack copy = message.stack.copy();
-            copy.setCount(copy.getMaxStackSize());
-            if (player.level() instanceof ServerLevel level) {
-                level.addFreshEntity(new ItemEntity(level, player.getX(),
-                        player.getY() + 0.2D, player.getZ(), copy));
-            }
+            // #88「造化」复制权能已按需求移除（改为：挖掘/击杀掉落的物品与经验 ×10）。
+            // 保留网络消息与寄存器以避免改动通道 ID，但服务端一律不再生成复制品。
         });
         context.setPacketHandled(true);
     }

@@ -671,12 +671,14 @@ public final class BeastEffects {
 
     private static void splashDamage(Player attacker, LivingEntity primaryVictim, float amount) {
         Level level = attacker.level();
-        List<Monster> mobs = level.getEntitiesOfClass(Monster.class,
+        List<LivingEntity> mobs = level.getEntitiesOfClass(LivingEntity.class,
                 AABB.ofSize(attacker.position(), AGGRO_RADIUS * 2, AGGRO_RADIUS * 2, AGGRO_RADIUS * 2));
         applyingSplash = true;
         try {
-            for (Monster mob : mobs) {
-                if (mob.is(primaryVictim) || !mob.isAlive()) {
+            for (LivingEntity mob : mobs) {
+                // 敌对单位（Monster 与 末影龙等 Enemy 生物，末影龙不是 Monster）
+                if (!(mob instanceof net.minecraft.world.entity.monster.Enemy)
+                        || mob.is(primaryVictim) || !mob.isAlive()) {
                     continue;
                 }
                 mob.hurt(attacker.damageSources().mobAttack(attacker), amount);

@@ -39,6 +39,9 @@ import java.util.UUID;
  * 太初/不朽/永恒之翼/万法附魔/净世/磐石/全知之眼/神能/天罚/光之领域/
  * 血之回响/神行/命泉/不灭战意/磁界/威慑/归墟/界缚/不朽之器/神之饱足。
  *
+ * <p>原 #88「造化」复制权能已按需求移除，改为：真者祂击杀任意生物时掉落物品×10、
+ * 破坏方块时掉落经验×10（方块物品掉落 1.20.1 Forge 的 BreakEvent 无挂点，故无法×10）。
+ *
  * <p>实现以"每服务端 tick 维持 + 事件豁免"为主，数值取最强口径；
  * 全部效果只在 {@link AscensionEffects#wearingHeTrue} 时生效。
  */
@@ -85,6 +88,9 @@ public final class HeTrueEffects {
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onTargetChange);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onXpChange);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onTeleportCommand);
+        // 造化（复制）已移除 → 挖掘/击杀掉落 ×10
+        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onLivingDrops);
+        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onBlockBreak);
     }
 
     private static boolean wearing(Player player) {
@@ -201,9 +207,11 @@ public final class HeTrueEffects {
         applyDivineEnchantments(player);
         // ---- 10 光之领域（每秒）----
         float beaconDmg = 50.0F + player.experienceLevel;
-        for (Monster mob : player.level().getEntitiesOfClass(Monster.class,
+        for (LivingEntity mob : player.level().getEntitiesOfClass(LivingEntity.class,
                 AABB.ofSize(player.position(), BEACON_RADIUS * 2, BEACON_RADIUS * 2, BEACON_RADIUS * 2))) {
-            if (mob.isAlive() && !mob.is(player)) {
+            // 敌对单位（Monster 与 末影龙等 Enemy 生物，末影龙不是 Monster）
+            if (mob instanceof net.minecraft.world.entity.monster.Enemy
+                    && mob.isAlive() && !mob.is(player)) {
                 mob.hurt(mob.damageSources().playerAttack(player), beaconDmg);
             }
         }
@@ -533,8 +541,8 @@ public final class HeTrueEffects {
         rememberOldWound(attacker, victim, amount);
         // 11 血之回响：全额回血
         attacker.heal(amount);
-        // 圣火灼烧 + 迟滞领域：命中目标着火并减速（仅对敌对生物）
-        if (victim instanceof Monster && victim.isAlive()) {
+        // 圣火灼烧 + 迟滞领域：命中目标着火并减速（仅对敌对生物，含末影龙等 Enemy）
+        if (victim instanceof net.minecraft.world.entity.monster.Enemy && victim.isAlive()) {
             victim.setSecondsOnFire(3);
             victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 100, 4, false, false));
         }
@@ -574,6 +582,50 @@ public final class HeTrueEffects {
                 && !event.getEffectInstance().getEffect().isBeneficial()) {
             event.setCanceled(true);
         }
+    }
+
+    // ==================================================================
+    // 造化（复制）已移除 → 挖掘/击杀掉落 ×10
+    // ==================================================================
+
+    /** 击杀掉落 ×10：真者祂击杀任意生物时，掉落的物品数量乘以 10。 */
+    private static void onLivingDrops(net.minecraftforge.event.entity.living.LivingDropsEvent event) {
+        if (event.getEntity().level().isClientSide) {
+            return;
+        }
+        Player killer = killerPlayer(event.getSource());
+        if (killer == null || !wearing(killer)) {
+            return;
+        }
+        for (net.minecraft.world.entity.item.ItemEntity item : event.getDrops()) {
+            if (item == null || item.getItem().isEmpty()) {
+                continue;
+            }
+            ItemStack stack = item.getItem();
+            stack.setCount(stack.getCount() * 10);
+        }
+    }
+
+    /** 挖掘掉落 ×10：真者祂破坏方块时，掉落的经验数量乘以 10。 */
+    private static void onBlockBreak(net.minecraftforge.event.level.BlockEvent.BreakEvent event) {
+        if (event.getPlayer() == null) {
+            return;
+        }
+        if (event.getPlayer().level().isClientSide || !wearing(event.getPlayer())) {
+            return;
+        }
+        int exp = event.getExpToDrop();
+        if (exp > 0) {
+            event.setExpToDrop(exp * 10);
+        }
+    }
+
+    /** 从伤害来源取回击杀玩家；无则返回 null。 */
+    private static Player killerPlayer(net.minecraft.world.damagesource.DamageSource source) {
+        if (source != null && source.getEntity() instanceof Player player) {
+            return player;
+        }
+        return null;
     }
 
     /** 6 磐石：免疫击退 */

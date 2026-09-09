@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -168,10 +169,11 @@ public final class AscensionEffects {
         }
         if (!effectsDisabled(player) && wearingHeExtreme(player) && player.tickCount % 20 == 0) {
             float dmg = 10.0F + player.experienceLevel;
-            for (Monster mob : player.level().getEntitiesOfClass(Monster.class,
+            for (LivingEntity mob : player.level().getEntitiesOfClass(LivingEntity.class,
                     net.minecraft.world.phys.AABB.ofSize(player.position(),
                             BEACON_RADIUS * 2, BEACON_RADIUS * 2, BEACON_RADIUS * 2))) {
-                if (mob.isAlive()) {
+                // 敌对单位（Monster 与 末影龙等 Enemy 生物，末影龙不是 Monster）
+                if (mob instanceof net.minecraft.world.entity.monster.Enemy && mob.isAlive()) {
                     beaconStrike = true;
                     try {
                         mob.hurt(mob.damageSources().playerAttack(player), dmg);

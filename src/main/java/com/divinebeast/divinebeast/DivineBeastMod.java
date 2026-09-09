@@ -54,8 +54,7 @@ public class DivineBeastMod {
                 () -> () -> ClientKeybinds.init(modBus));
         DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> AutoCombatClient.init());
-        DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
-                () -> () -> com.divinebeast.divinebeast.client.InventoryCopyClient.init());
+        // #88「造化」复制权能已移除（改为：挖掘/击杀掉落 ×10），不再注册 InventoryCopyClient。
         // 脑后星环光环（Z 键本地开关）：任意客户端都注册，内部 Curios 缺失时空转
         DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> com.divinebeast.divinebeast.client.OrbitAuraClient.init());
