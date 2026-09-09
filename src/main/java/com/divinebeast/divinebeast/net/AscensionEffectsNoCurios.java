@@ -28,7 +28,7 @@ public final class AscensionEffectsNoCurios {
         player.setHealth(player.getMaxHealth());
         player.fallDistance = 0.0F;
         player.removeAllEffects();
-        player.setFireTicks(0);
+        player.clearFire();
         player.setInvulnerable(false);
     }
 }
