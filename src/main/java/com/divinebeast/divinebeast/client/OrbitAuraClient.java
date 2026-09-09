@@ -42,6 +42,9 @@ import java.util.List;
  *
  * <p>纯客户端渲染、无网络同步；Curios 调用全部以全限定名写在 curiosLoaded
  * 守卫内，未装 Curios 时类可安全加载并空转。
+ *
+ * <p><b>坐标与阶段</b>：用 {@code Stage.AFTER_PARTICLES}（相机空间仍有效）渲染世界锚定线条；
+ * 不能用 {@code Stage.AFTER_LEVEL}，它触发时 poseStack 已丢失相机平移，会把图形画到错误位置。
  */
 public final class OrbitAuraClient {
 
@@ -256,7 +259,10 @@ public final class OrbitAuraClient {
     // ==================================================================
 
     private static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+        // 必须在相机空间仍然生效的阶段渲染世界锚定几何。
+        // AFTER_LEVEL 在 renderLevel 结束后才触发，此时 pose stack 已丢失相机平移，
+        // translate(world - cam) 会画到 (world - cam) 的错误位置。故改用 AFTER_PARTICLES。
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
