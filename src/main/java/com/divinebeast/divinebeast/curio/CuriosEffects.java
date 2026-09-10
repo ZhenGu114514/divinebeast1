@@ -112,7 +112,7 @@ public final class CuriosEffects {
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onLivingFall);
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onLivingKnockBack);
-        MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onMobEffectAdded);
+        MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onEffectApplicable);
         MinecraftForge.EVENT_BUS.addListener(CuriosEffects::onTargetChange);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, CuriosEffects::onXpChange);
         // 跨维度（含末地传送门返回主世界）后立即重建证悟阶段槽
@@ -333,15 +333,21 @@ public final class CuriosEffects {
         }
     }
 
-    /** 救赎：免疫负面药水/效果（阻止施加） */
-    private static void onMobEffectAdded(MobEffectEvent.Added event) {
+    /**
+     * 救赎：免疫负面药水/效果（阻止施加）。
+     *
+     * <p>必须用 {@link MobEffectEvent.Applicable}（HasResult，可 setResult(DENY)）在
+     * 施加前拦截；{@code MobEffectEvent.Added} 是"已施加"通知且**不可取消**，
+     * 对其调用 setCanceled() 会抛 UnsupportedOperationException 导致服务器崩溃。
+     */
+    private static void onEffectApplicable(MobEffectEvent.Applicable event) {
         if (event.getEntity().level().isClientSide) {
             return;
         }
         if (event.getEntity() instanceof Player player && phaseTwo(player)
                 && !AscensionEffects.effectsDisabled(player)
-                && event.getEffectInstance() != null && !event.getEffectInstance().getEffect().isBeneficial()) {
-            event.setCanceled(true);
+                && !event.getEffectInstance().getEffect().isBeneficial()) {
+            event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
         }
     }
 
@@ -731,10 +737,16 @@ public final class CuriosEffects {
     /** 证悟阶段槽：按 AscensionEffects.stageOf 解锁 he_first / he_extreme / he_true，
      *  redemption / trueheart 则跟随核心是否正佩戴（穿 祂者初 → 救赎槽开；
      *  穿 祂者极 → 本心槽开；销毁/离槽即关）。
-     *  <p>无状态自愈式：想要就无条件 add（同一 UUID 幂等覆盖），不想要就无条件 removeSlotModifiers
-     *  （modifier 不存在时无副作用）。不依赖任何内存记忆集，因此跨维度/重生/换实体后，
-     *  只要下一个服务端 tick 运行即可把槽位状态收敛到当前佩戴/阶段。 */
+     *  <p>无状态自愈式：按 handler 中的实际修饰符状态增删（幂等），不依赖任何内存记忆集，
+     *  因此跨维度/重生/换实体后，只要下一个服务端 tick 运行即可把槽位收敛到当前阶段。 */
     private static void syncAscensionSlots(Player player) {
+        // 有外部容器/界面打开时暂不改动槽位数量：增删槽位会改变容器槽数，而客户端
+        // "已打开"的菜单仍是旧槽数，服务端随后发的 ClientboundContainerSetContentPacket
+        // 会在客户端 AbstractContainerMenu.getSlot() 越界（IndexOutOfBoundsException）。
+        // 关掉容器后下个 tick 自会补上（本方法每 tick 都跑）。
+        if (player.containerMenu != player.inventoryMenu) {
+            return;
+        }
         int stage = AscensionEffects.stageOf(player);
         java.util.Optional<ICuriosItemHandler> optional = CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isEmpty()) {
@@ -750,6 +762,11 @@ public final class CuriosEffects {
 
     private static void syncOneSlot(ICuriosItemHandler handler, String slotId, boolean wanted,
                                     UUID modUuid) {
+        // 仅当"实际状态"与"期望状态"不符时才改动。原来每 tick 无条件 add/remove，
+        // 会反复触发槽位更新与容器同步，是容器槽数错位（客户端越界报错）的主要来源。
+        if (hasSlotModifier(handler, slotId, modUuid, 1.0D) == wanted) {
+            return;
+        }
         com.google.common.collect.Multimap<String, AttributeModifier> map = com.google.common.collect.LinkedHashMultimap.create();
         map.put(slotId, new AttributeModifier(modUuid, "divinebeast_" + slotId, 1.0D,
                 AttributeModifier.Operation.ADDITION));
@@ -758,6 +775,22 @@ public final class CuriosEffects {
         } else {
             handler.removeSlotModifiers(map);
         }
+    }
+
+    /** 该槽位上是否已存在我们用 modUuid 施加、数值为 amount 的修饰符（查询失败按"不存在"处理）。 */
+    private static boolean hasSlotModifier(ICuriosItemHandler handler, String slotId,
+                                           UUID modUuid, double amount) {
+        try {
+            for (AttributeModifier modifier : handler.getModifiers().get(slotId)) {
+                if (modUuid.equals(modifier.getId())
+                        && Math.abs(modifier.getAmount() - amount) < 1.0E-6D) {
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {
+            // 退回原行为（当作不存在）
+        }
+        return false;
     }
 
     /** 玩家更换维度（如经末地传送门从末地返回主世界）后，立即强制重同步证悟槽位。

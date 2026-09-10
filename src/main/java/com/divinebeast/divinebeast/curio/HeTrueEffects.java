@@ -1,6 +1,5 @@
 package com.divinebeast.divinebeast.curio;
 
-import com.divinebeast.divinebeast.item.ModItems;
 import com.divinebeast.divinebeast.net.CuriosEffectsState;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -29,7 +28,6 @@ import net.minecraftforge.event.entity.living.LivingKnockBackEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.event.entity.player.PlayerXpEvent;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -38,6 +36,17 @@ import java.util.UUID;
  * <p>佩戴（绑定不可卸下）即获得 20 项正面权能：
  * 太初/不朽/永恒之翼/万法附魔/净世/磐石/全知之眼/神能/天罚/光之领域/
  * 血之回响/神行/命泉/不灭战意/磁界/威慑/归墟/界缚/不朽之器/神之饱足。
+ *
+ * <p>本版按需求改写（均为"替换其中一个效果"）：
+ * <ul>
+ *   <li>11 血之回响 → <b>伤害 × 当前生命值</b>（有多少点生命就乘多少）；</li>
+ *   <li>76 旧伤 → <b>22 神威：攻击力 +1 億</b>；</li>
+ *   <li>圣火灼烧＋迟滞领域 → <b>斥力场：弹开一切非自身的远程弹射物</b>；</li>
+ *   <li>1 太初 / 17 归墟 → <b>免疫虚空伤害</b>（不再"从虚空中拉回"）；
+ *       且 17 归墟 追加一段<b>与本次伤害等值的虚空伤害</b>；</li>
+ *   <li>8 神能 攻击速度 → <b>+1000</b>；</li>
+ *   <li>6 磐石 击退抗性 → <b>+100</b>。</li>
+ * </ul>
  *
  * <p>原 #88「造化」复制权能已按需求移除，改为：真者祂击杀任意生物时掉落物品×10、
  * 破坏方块时掉落经验×10（方块物品掉落 1.20.1 Forge 的 BreakEvent 无挂点，故无法×10）。
@@ -56,22 +65,30 @@ public final class HeTrueEffects {
     private static final UUID FLYING_SPEED_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b6");
     /** 万藏：通用(curio)槽固定修饰符 UUID */
     private static final UUID CURIO_HOARD_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b7");
-    /** 神行 X 开关开启时，飞行能力速度放大系数（相对玩家原 flyingSpeed） */
-    private static final double STRIDE_FLY_BOOST = 25.0D;
+    /** 神威（由 76 旧伤 改写）：攻击力 +1 億 的固定修饰符 UUID */
+    private static final UUID MIGHT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b8");
+    /**
+     * 神行移速倍率（MULTIPLY_TOTAL 增量）。1.0 = +100%，即移速 ×2，
+     * 与原版「速度 V」等价（药水每级 +20%，V 级 = amp4 = +100%）。
+     */
+    private static final double STRIDE_SPEED_MULTIPLIER = 1.0D;
+    /** 神行 X 开关开启时，飞行能力速度放大系数（相对玩家原 flyingSpeed）：×2 ≈ 速度 V */
+    private static final double STRIDE_FLY_BOOST = 2.0D;
     /** 记录每个玩家原始的 Abilities#flyingSpeed，用于 X 关闭/脱离形态时还原 */
     private static final java.util.Map<java.util.UUID, Float> STRIDE_ORIG_FLY = new java.util.HashMap<>();
-    /** 旧伤：同一目标伤害叠加记忆（attacker → victim → 上次造成伤害） */
-    private static final java.util.Map<java.util.UUID, java.util.Map<java.util.UUID, Float>> OLD_WOUNDS =
-            new java.util.HashMap<>();
     /** 太初：玩家 → [自然秒 id, 该秒已累计伤害]，每秒最多 1 点 */
     private static final java.util.Map<java.util.UUID, double[]> SEC_DAMAGE = new java.util.HashMap<>();
+    /** 斥力场（由 圣火灼烧＋迟滞领域 改写）作用半径：AABB 边长（格） */
+    private static final double REPEL_RADIUS = 12.0D;
+    /** 斥力场把弹射物弹开的速度（格/tick） */
+    private static final double REPEL_SPEED = 2.0D;
 
     /** 天罚追加真伤防递归标记 */
     private static boolean applyingTrueDamage = false;
     /** 光柱范围（格）——真者祂光之领域 */
     private static final double BEACON_RADIUS = 16.0D;
-    /** 磁界拉取范围（格） */
-    private static final double MAGNET_RADIUS = 24.0D;
+    /** 磁界拉取范围（格，AABB 边长） */
+    private static final double MAGNET_RADIUS = 16.0D;
     /** 当前处于真者祂形态的玩家（用于离开形态时精确回收本引擎效果） */
     private static final java.util.Set<java.util.UUID> ACTIVE = new java.util.HashSet<>();
 
@@ -82,7 +99,7 @@ public final class HeTrueEffects {
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onPlayerTick);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onLivingDamage);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onDeath);
-        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onEffectAdded);
+        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onEffectApplicable);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onKnockBack);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onFall);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onTargetChange);
@@ -118,10 +135,8 @@ public final class HeTrueEffects {
         ACTIVE.add(player.getUUID());
         // X 键开关：神行 行/飞/游 移速加成（默认开，见 CuriosEffectsState）
         boolean strideSpeed = CuriosEffectsState.htrueSpeedToggle(player);
-        // ---- 1 太初 / 17 归墟：虚空拉回（伤害免疫在 onLivingDamage）----
-        if (player.getY() < player.level().getMinBuildHeight() - 4) {
-            player.teleportTo(player.getX(), player.level().getMinBuildHeight() + 4, player.getZ());
-        }
+        // ---- 1 太初 / 17 归墟：免疫虚空伤害（不再"从虚空中拉回"，拦截见 onLivingDamage）----
+        // 注：改为免疫后不再传送回安全高度；若坠入虚空会持续下坠，需自行飞回（本形态自带创造式飞行）。
         // ---- 3 永恒之翼：创造式飞行 ----
         if (!player.isCreative() && !player.isSpectator()) {
             if (!player.getAbilities().mayfly) {
@@ -133,39 +148,29 @@ public final class HeTrueEffects {
         }
         // ---- 4 无相 → 万法附魔：穿戴装备 + 背包内可附魔物品全部获得可附上的正面附魔（无视冲突）----
         // 隐身效果已按需求移除。附魔在下方每 20 tick 幂等刷新写入。
-        // ---- 5 净世：清负面（免疫在 onEffectAdded）----
-        List<MobEffectInstance> effects = new java.util.ArrayList<>(player.getActiveEffects());
-        for (MobEffectInstance effect : effects) {
-            if (!effect.getEffect().isBeneficial()) {
-                player.removeEffect(effect.getEffect());
-            }
-        }
+        // ---- 5 净世：清负面（免疫在 onEffectApplicable）----
+        clearNegativeEffects(player);
         // ---- 17 归墟：灭火 + 补空气 ----
         player.clearFire();
         if (player.getAirSupply() < player.getMaxAirSupply()) {
             player.setAirSupply(player.getMaxAirSupply());
         }
-        // ---- 2 不朽 / 13 命泉：生命与吸收回满（已满不重复写，减少网络同步）----
-        if (player.getHealth() < player.getMaxHealth()) {
-            player.setHealth(player.getMaxHealth());
-        }
-        if (player.getAbsorptionAmount() < 40.0F) {
-            player.setAbsorptionAmount(40.0F);
-        }
+        // ---- 2 不朽 / 13 命泉：生命与吸收回满 ----
+        restoreVitals(player);
         // ---- 7 全知之眼：夜视 ----
         if (player.tickCount % 100 == 0) {
             player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0, false, false));
         }
-        // ---- 万法之域：常驻增益族（力量/抗性/跳跃/幸运/再生/水下呼吸/防火，时长到期前补发）----
+        // ---- 万法之域：常驻增益族（时长到期前补发）----
+        // 去重说明：力量/移速/再生/水下呼吸 原先同时用"药水"和"属性/直接写入"两条渠道，
+        // 数值上完全被后者覆盖（ATTACK_DAMAGE +5000、MOVEMENT_SPEED +2.4、
+        // 每 tick setHealth(max)、每 tick setAirSupply(max)），故不再重复给药水。
+        // 防火保留：FIRE_RESISTANCE 额外降低岩浆伤害，是 clearFire() 覆盖不到的。
         if (player.tickCount % 80 == 0) {
-            refreshBuff(player, MobEffects.DAMAGE_BOOST, 5, 320);
             refreshBuff(player, MobEffects.DAMAGE_RESISTANCE, 4, 320);
             refreshBuff(player, MobEffects.JUMP, 5, 320);
             refreshBuff(player, MobEffects.LUCK, 5, 320);
-            refreshBuff(player, MobEffects.REGENERATION, 4, 320);
-            refreshBuff(player, MobEffects.WATER_BREATHING, 0, 320);
             refreshBuff(player, MobEffects.FIRE_RESISTANCE, 0, 320);
-            refreshBuff(player, MobEffects.MOVEMENT_SPEED, 3, 320);
             // 89 摧岳：极高挖掘速度（高等级急迫 = 高倍率，非创造式瞬破）
             refreshBuff(player, MobEffects.DIG_SPEED, 200, 320);
         }
@@ -178,21 +183,32 @@ public final class HeTrueEffects {
         }
         // ---- 8 神能 / 12 神行（行/飞/泳同速）/ 6 磐石 / 23 无量之躯：属性强化（幂等覆盖）----
         ensureAttribute(player, Attributes.ATTACK_DAMAGE, DAMAGE_MOD, "divinebeast_he_true_dmg", 5000.0D);
-        ensureAttribute(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_MOD, "divinebeast_he_true_atk_speed", 60.0D);
+        // 22 神威（由 76 旧伤 改写）：攻击力 +1 億
+        ensureAttribute(player, Attributes.ATTACK_DAMAGE, MIGHT_MOD, "divinebeast_he_true_might", 1.0E8D);
+        ensureAttribute(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_MOD, "divinebeast_he_true_atk_speed", 1000.0D);
         // 行走 / 飞行 / 游泳移速：X 键关闭时不维持并回收。
         // 行走/游泳读 MOVEMENT_SPEED；创造式飞行的水平速度由 Abilities#flyingSpeed 提供，
         // 因此开关须同时改写能力字段并通过 onUpdateAbilities 同步（否则飞行吃不到加成）。
         if (strideSpeed) {
-            ensureAttribute(player, Attributes.MOVEMENT_SPEED, SPEED_MOD, "divinebeast_he_true_speed", 2.4D);
-            ensureAttribute(player, Attributes.FLYING_SPEED, FLYING_SPEED_MOD, "divinebeast_he_true_fly_speed", 2.4D);
+            // 手感目标 ≈ 原版「速度 V」：改用 MULTIPLY_TOTAL 倍率（×2），
+            // 原先用的是 ADDITION +2.4（≈基础 0.1 的 25 倍，过快）。
+            ensureAttributeMultiplier(player, Attributes.MOVEMENT_SPEED, SPEED_MOD,
+                    "divinebeast_he_true_speed", STRIDE_SPEED_MULTIPLIER);
+            // 注：generic.flying_speed 对"玩家的创造式飞行"无效 —— 玩家飞行的水平速度走
+            // Abilities#flyingSpeed（见 applyStrideAbilities 的 ×2 改写）。此处仍保留该
+            // 属性修饰符，仅为兼容"自行读取 generic.flying_speed"的其它模组，不影响原版手感。
+            ensureAttributeMultiplier(player, Attributes.FLYING_SPEED, FLYING_SPEED_MOD,
+                    "divinebeast_he_true_fly_speed", STRIDE_SPEED_MULTIPLIER);
             applyStrideAbilities(player, true);
         } else {
             removeAttributeModifier(player, Attributes.MOVEMENT_SPEED, SPEED_MOD);
             removeAttributeModifier(player, Attributes.FLYING_SPEED, FLYING_SPEED_MOD);
             applyStrideAbilities(player, false);
         }
+        // 注意：原版击退计算为 strength *= (1 - 击退抗性)，抗性 >1 会把击退"反向放大"。
+        // 真正保证"完全免疫击退"的是 onKnockBack 里的事件取消；此属性按需求设为 +100。
         ensureAttribute(player, Attributes.KNOCKBACK_RESISTANCE, KNOCKBACK_RES_MOD,
-                "divinebeast_he_true_kb", 1.0D);
+                "divinebeast_he_true_kb", 100.0D);
         ensureAttribute(player, Attributes.MAX_HEALTH, MAX_HEALTH_MOD,
                 "divinebeast_he_true_maxhp", 2000.0D);
         // 蹈水履火：可于水面与岩浆表面行走（不深潜/不飞行时生效）
@@ -200,22 +216,25 @@ public final class HeTrueEffects {
         // 万藏：动态通用(curio)槽 = 99 + 已装通用饰品件数
         syncCurioHoard(player);
 
-        if (player.tickCount % 20 != 0) {
-            return;
+        // 以下按各自周期执行。原先这里是一个统一的 `if (tickCount % 20 != 0) return;`，
+        // 会把周期更细的磁界（%10）一并吞掉，使其实际只每 20 tick 跑一次。
+        // ---- 万法附魔：穿戴装备 + 背包可附魔物品全部得到可附上的正面附魔（无视冲突），永久写入（每秒）----
+        if (player.tickCount % 20 == 0) {
+            applyDivineEnchantments(player);
         }
-        // ---- 万法附魔：穿戴装备 + 背包可附魔物品全部得到可附上的正面附魔（无视冲突），永久写入 ----
-        applyDivineEnchantments(player);
         // ---- 10 光之领域（每秒）----
-        float beaconDmg = 50.0F + player.experienceLevel;
-        for (LivingEntity mob : player.level().getEntitiesOfClass(LivingEntity.class,
-                AABB.ofSize(player.position(), BEACON_RADIUS * 2, BEACON_RADIUS * 2, BEACON_RADIUS * 2))) {
-            // 敌对单位（Monster 与 末影龙等 Enemy 生物，末影龙不是 Monster）
-            if (mob instanceof net.minecraft.world.entity.monster.Enemy
-                    && mob.isAlive() && !mob.is(player)) {
-                mob.hurt(mob.damageSources().playerAttack(player), beaconDmg);
+        if (player.tickCount % 20 == 0) {
+            float beaconDmg = 50.0F + player.experienceLevel;
+            for (LivingEntity mob : player.level().getEntitiesOfClass(LivingEntity.class,
+                    AABB.ofSize(player.position(), BEACON_RADIUS * 2, BEACON_RADIUS * 2, BEACON_RADIUS * 2))) {
+                // 敌对单位（Monster 与 末影龙等 Enemy 生物，末影龙不是 Monster）
+                if (mob instanceof net.minecraft.world.entity.monster.Enemy
+                        && mob.isAlive() && !mob.is(player)) {
+                    mob.hurt(mob.damageSources().playerAttack(player), beaconDmg);
+                }
             }
         }
-        // ---- 7 全知之眼：察觉众生（发光标记，避免使用不确定的实体 flag API）----
+        // ---- 7 全知之眼：察觉众生（每 5 秒）----
         if (player.tickCount % 100 == 0) {
             for (LivingEntity living : player.level().getEntitiesOfClass(LivingEntity.class,
                     AABB.ofSize(player.position(), 48, 48, 48))) {
@@ -225,9 +244,9 @@ public final class HeTrueEffects {
                 }
             }
         }
-        // ---- 15 磁界：拉近物品与经验 ----
+        // ---- 15 磁界：拉近物品与经验（每 10 tick）----
         if (player.tickCount % 10 == 0) {
-            AABB box = AABB.ofSize(player.position(), 16, 16, 16);
+            AABB box = AABB.ofSize(player.position(), MAGNET_RADIUS, MAGNET_RADIUS, MAGNET_RADIUS);
             for (ItemEntity item : player.level().getEntitiesOfClass(ItemEntity.class, box)) {
                 item.setPickUpDelay(0);
                 item.setPos(player.getX(), player.getY() + 0.5D, player.getZ());
@@ -236,8 +255,63 @@ public final class HeTrueEffects {
                 orb.setPos(player.getX(), player.getY() + 0.5D, player.getZ());
             }
         }
-        // ---- 19 不朽之器：修复装备与手持物 ----
-        repairAll(player);
+        // ---- 19 不朽之器：修复装备与手持物（每秒）----
+        if (player.tickCount % 20 == 0) {
+            repairAll(player);
+        }
+        // ---- 斥力场（由 圣火灼烧＋迟滞领域 改写）：弹开一切"非自身"的远程弹射物 ----
+        if (player.tickCount % 2 == 0) {
+            repelProjectiles(player);
+        }
+    }
+
+    /**
+     * 斥力（由「圣火灼烧＋迟滞领域」改写）：把半径内**除自己发射之外**的所有弹射物向外弹开。
+     * 覆盖骷髅的箭、凋灵的凋零头颅、烈焰人的烈焰弹、雪球、三叉戟等一切 {@code Projectile}。
+     * 通过"清零速度 + push 向外"实现，避免只是减速。
+     */
+    private static void repelProjectiles(Player player) {
+        for (net.minecraft.world.entity.projectile.Projectile proj
+                : player.level().getEntitiesOfClass(net.minecraft.world.entity.projectile.Projectile.class,
+                        AABB.ofSize(player.position(), REPEL_RADIUS, REPEL_RADIUS, REPEL_RADIUS))) {
+            if (!proj.isAlive() || proj.getOwner() == player) {
+                continue; // 除自身（自己射出的）之外
+            }
+            net.minecraft.world.phys.Vec3 away = proj.position().subtract(player.position());
+            if (away.lengthSqr() < 1.0E-4D) {
+                away = new net.minecraft.world.phys.Vec3(0.0D, 1.0D, 0.0D); // 重叠时向上弹开
+            } else {
+                away = away.normalize();
+            }
+            proj.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+            proj.push(away.x * REPEL_SPEED, away.y * REPEL_SPEED, away.z * REPEL_SPEED);
+        }
+    }
+
+    /**
+     * 2 不朽 / 13 命泉：生命与吸收回满（已满不重复写，减少网络同步）。
+     * 原先这段逻辑在"每 tick 维持"和"死亡拦截"两处各写了一遍，现统一在此。
+     */
+    private static void restoreVitals(Player player) {
+        if (player.getHealth() < player.getMaxHealth()) {
+            player.setHealth(player.getMaxHealth());
+        }
+        if (player.getAbsorptionAmount() < 40.0F) {
+            player.setAbsorptionAmount(40.0F);
+        }
+    }
+
+    /**
+     * 5 净世：清除身上残留的负面效果，**保留正面增益**。
+     * 与 {@code removeAllEffects()} 的区别：后者会把万法之域/夜视等自家增益一起清掉，
+     * 下个 tick 又被 refreshBuff 补回，形成"清了又补"的抖动。
+     */
+    private static void clearNegativeEffects(Player player) {
+        for (MobEffectInstance effect : new java.util.ArrayList<>(player.getActiveEffects())) {
+            if (!effect.getEffect().isBeneficial()) {
+                player.removeEffect(effect.getEffect());
+            }
+        }
     }
 
     private static void ensureAttribute(Player player,
@@ -253,6 +327,33 @@ public final class HeTrueEffects {
         }
     }
 
+    /**
+     * 以 {@code MULTIPLY_TOTAL}（与原版速度药水同款运算）维持某属性的倍率修饰符。
+     * {@code multiplyTotal = 1.0} 表示 +100%（×2）。
+     *
+     * <p>若已存在的同 UUID 修饰符"运算方式或数值"不符（例如旧版本留下的是 ADDITION +2.4），
+     * 会先移除再按新值重加，保证老存档也能收敛到新倍率。
+     */
+    private static void ensureAttributeMultiplier(Player player,
+                                                  net.minecraft.world.entity.ai.attributes.Attribute attribute,
+                                                  UUID uuid, String name, double multiplyTotal) {
+        AttributeInstance instance = player.getAttribute(attribute);
+        if (instance == null) {
+            return;
+        }
+        AttributeModifier existing = instance.getModifier(uuid);
+        if (existing != null
+                && existing.getOperation() == AttributeModifier.Operation.MULTIPLY_TOTAL
+                && Math.abs(existing.getAmount() - multiplyTotal) < 1.0E-6D) {
+            return;
+        }
+        if (existing != null) {
+            instance.removeModifier(uuid);
+        }
+        instance.addPermanentModifier(new AttributeModifier(uuid, name, multiplyTotal,
+                AttributeModifier.Operation.MULTIPLY_TOTAL));
+    }
+
     /** 按 UUID 移除属性修饰符（不存在时无副作用）。 */
     private static void removeAttributeModifier(Player player,
                                                 net.minecraft.world.entity.ai.attributes.Attribute attribute,
@@ -266,8 +367,9 @@ public final class HeTrueEffects {
     /**
      * 神行移速开关对「飞行能力」的同步：1.20.1 玩家创造式飞行水平速度由
      * {@code Abilities#flyingSpeed} 提供（generic.flying_speed 属性对玩家无效），
-     * 因此 X 开时把能力值放大 STRIDE_FLY_BOOST 倍（与行走 +2.4 同为约 25 倍提升），
-     * 关时还原为原始值，并用 onUpdateAbilities 同步客户端。仅在值变化时发送。
+     * 因此 X 开时把能力值放大 STRIDE_FLY_BOOST 倍（= ×2，与行走的「速度 V」倍率一致，
+     * 原先为 ×25，过快故下调），关时还原为原始值，并用 onUpdateAbilities 同步客户端。
+     * 仅在值变化时发送。
      */
     private static void applyStrideAbilities(Player player, boolean on) {
         if (!(player instanceof ServerPlayer sp)) {
@@ -282,33 +384,6 @@ public final class HeTrueEffects {
         }
         if (!on) {
             STRIDE_ORIG_FLY.remove(sp.getUUID());
-        }
-    }
-
-    // ==================================================================
-    // 76 旧伤：对同一目标的伤害叠加
-    // ==================================================================
-
-    /** 读取上次对该目标造成的伤害（无则 0）。 */
-    private static float oldWound(Player attacker, LivingEntity victim) {
-        java.util.Map<java.util.UUID, Float> perTarget = OLD_WOUNDS.get(attacker.getUUID());
-        if (perTarget == null) {
-            return 0.0F;
-        }
-        Float last = perTarget.get(victim.getUUID());
-        return last == null ? 0.0F : last;
-    }
-
-    /** 记录本次对该目标造成的伤害。 */
-    private static void rememberOldWound(Player attacker, LivingEntity victim, float amount) {
-        OLD_WOUNDS.computeIfAbsent(attacker.getUUID(), k -> new java.util.HashMap<>())
-                .put(victim.getUUID(), amount);
-    }
-
-    /** 目标死亡（或被移除形态）后清空其旧伤记忆。 */
-    private static void forgetVictim(java.util.UUID victimUuid) {
-        for (java.util.Map<java.util.UUID, Float> perTarget : OLD_WOUNDS.values()) {
-            perTarget.remove(victimUuid);
         }
     }
 
@@ -356,11 +431,16 @@ public final class HeTrueEffects {
 
     /**
      * 万藏：固定为通用(curio)槽 +99 个（不再随已装件数增长）。
-     * 无状态自愈式（同 CuriosEffects#syncOneSlot）：每个服务端 tick 用同一 UUID
-     * 幂等覆盖应用 99，不依赖内存记忆，因此跨维度/重生后 transient 修饰符
-     * 被 Curios 清除时，下个 tick 会自动补回。
+     * 无状态自愈式：按 handler 实际修饰符状态增删（幂等），不依赖内存记忆，
+     * 因此跨维度/重生后 transient 修饰符被 Curios 清除时，下个 tick 会自动补回。
      */
     private static void syncCurioHoard(Player player) {
+        // 有外部容器/界面打开时暂不加槽：+99 会改变容器槽数，而客户端已打开的菜单
+        // 仍是旧槽数 → ClientboundContainerSetContentPacket 在客户端越界报错。
+        // 关掉容器后下个 tick 自会补上。
+        if (player.containerMenu != player.inventoryMenu) {
+            return;
+        }
         java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
                 top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isEmpty()) {
@@ -374,46 +454,50 @@ public final class HeTrueEffects {
             return;
         }
         int target = 99;
+        // 已是 +99 则不再重复写入（避免每 tick 触发槽位更新/容器同步）
+        if (hasSlotModifier(handler, "curio", CURIO_HOARD_MOD, (double) target)) {
+            return;
+        }
         com.google.common.collect.Multimap<String, AttributeModifier> map =
                 com.google.common.collect.LinkedHashMultimap.create();
         map.put("curio", new AttributeModifier(CURIO_HOARD_MOD, "divinebeast_he_true_curio",
                 target, AttributeModifier.Operation.ADDITION));
-        handler.addTransientSlotModifiers(map); // 同一 UUID 幂等覆盖
+        handler.addTransientSlotModifiers(map);
+    }
+
+    /** 该槽位上是否已存在我们用 modUuid 施加、数值为 amount 的修饰符（查询失败按"不存在"处理）。 */
+    private static boolean hasSlotModifier(
+            top.theillusivec4.curios.api.type.capability.ICuriosItemHandler handler,
+            String slotId, UUID modUuid, double amount) {
+        try {
+            for (AttributeModifier modifier : handler.getModifiers().get(slotId)) {
+                if (modUuid.equals(modifier.getId())
+                        && Math.abs(modifier.getAmount() - amount) < 1.0E-6D) {
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {
+            // 退回原行为（当作不存在）
+        }
+        return false;
     }
 
     private static void removeMods(Player player) {
         applyStrideAbilities(player, false); // 还原被放大的飞行能力值
-        for (UUID uuid : new UUID[]{DAMAGE_MOD, SPEED_MOD, ATTACK_SPEED_MOD, KNOCKBACK_RES_MOD,
-                MAX_HEALTH_MOD, FLYING_SPEED_MOD}) {
-            AttributeInstance instance = player.getAttribute(Attributes.ATTACK_DAMAGE);
-            if (instance != null) {
-                instance.removeModifier(uuid);
-            }
-            instance = player.getAttribute(Attributes.MOVEMENT_SPEED);
-            if (instance != null) {
-                instance.removeModifier(uuid);
-            }
-            instance = player.getAttribute(Attributes.ATTACK_SPEED);
-            if (instance != null) {
-                instance.removeModifier(uuid);
-            }
-            instance = player.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
-            if (instance != null) {
-                instance.removeModifier(uuid);
-            }
-            instance = player.getAttribute(Attributes.MAX_HEALTH);
-            if (instance != null) {
-                instance.removeModifier(uuid);
-            }
-            instance = player.getAttribute(Attributes.FLYING_SPEED);
-            if (instance != null) {
-                instance.removeModifier(uuid);
-            }
-        }
+        // 每个 UUID 只属于一条属性，按 1:1 精确移除即可。
+        // （原先用一个"6 UUID × 6 属性"的双层循环，实际产生 36 次无意义尝试。）
+        removeAttributeModifier(player, Attributes.ATTACK_DAMAGE, DAMAGE_MOD);
+        removeAttributeModifier(player, Attributes.ATTACK_DAMAGE, MIGHT_MOD);
+        removeAttributeModifier(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_MOD);
+        removeAttributeModifier(player, Attributes.MOVEMENT_SPEED, SPEED_MOD);
+        removeAttributeModifier(player, Attributes.FLYING_SPEED, FLYING_SPEED_MOD);
+        removeAttributeModifier(player, Attributes.KNOCKBACK_RESISTANCE, KNOCKBACK_RES_MOD);
+        removeAttributeModifier(player, Attributes.MAX_HEALTH, MAX_HEALTH_MOD);
+        // 回收万法之域增益（只列本引擎实际发放的；原先多列了力量/再生/水下呼吸/移速，
+        // 那几项已改为不再发放，留着反而会误删玩家自带的同类药水）。
         for (net.minecraft.world.effect.MobEffect effect : new net.minecraft.world.effect.MobEffect[]{
-                MobEffects.DAMAGE_BOOST, MobEffects.DAMAGE_RESISTANCE, MobEffects.JUMP,
-                MobEffects.LUCK, MobEffects.REGENERATION, MobEffects.WATER_BREATHING,
-                MobEffects.FIRE_RESISTANCE, MobEffects.MOVEMENT_SPEED, MobEffects.DIG_SPEED}) {
+                MobEffects.DAMAGE_RESISTANCE, MobEffects.JUMP,
+                MobEffects.LUCK, MobEffects.FIRE_RESISTANCE, MobEffects.DIG_SPEED}) {
             if (player.getEffect(effect) != null
                     && player.getEffect(effect).getAmplifier() >= 3) {
                 player.removeEffect(effect);
@@ -427,9 +511,8 @@ public final class HeTrueEffects {
             }
         }
         player.setAbsorptionAmount(0.0F);
-        // 回收万藏：移除动态通用槽修饰符
-        OLD_WOUNDS.remove(player.getUUID()); // 离开形态：清空自身旧伤记忆
         SEC_DAMAGE.remove(player.getUUID()); // 太初每秒伤害额度随形态结束重置
+        // 回收万藏：移除动态通用槽修饰符
         java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
                 top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isPresent()) {
@@ -491,12 +574,17 @@ public final class HeTrueEffects {
     // 事件
     // ==================================================================
 
-    /** 1 太初（含 17 归墟 的环境伤害）/ 9 天罚 / 11 血之回响 / 76 旧伤 */
+    /** 1 太初（虚空免疫）/ 11 血之回响 / 9 天罚 / 17 归墟（附加虚空伤害） */
     private static void onLivingDamage(LivingDamageEvent event) {
         if (event.getEntity().level().isClientSide || applyingTrueDamage) {
             return;
         }
         LivingEntity victim = event.getEntity();
+        // 1 太初 / 17 归墟：免疫虚空伤害（原先是从虚空中拉回，现改为直接免疫）
+        if (victim instanceof Player player && wearing(player) && isVoidDamage(event.getSource())) {
+            event.setCanceled(true);
+            return;
+        }
         // 太初：每个自然秒内自身累计最多受到 1 点伤害，同秒内多余伤害全部无视
         if (victim instanceof Player player && wearing(player)) {
             long second = player.level().getGameTime() / 20L;
@@ -532,55 +620,57 @@ public final class HeTrueEffects {
         if (event.isCanceled() || amount <= 0.0F) {
             return;
         }
-        // 76 旧伤：本次伤害 += 上次对该生物造成的伤害（同 attacker→victim 记忆；目标死亡即清零）
-        float last = oldWound(attacker, victim);
-        if (last > 0.0F) {
-            amount += last;
-            event.setAmount(amount);
-        }
-        rememberOldWound(attacker, victim, amount);
-        // 11 血之回响：全额回血
-        attacker.heal(amount);
-        // 圣火灼烧 + 迟滞领域：命中目标着火并减速（仅对敌对生物，含末影龙等 Enemy）
-        if (victim instanceof net.minecraft.world.entity.monster.Enemy && victim.isAlive()) {
-            victim.setSecondsOnFire(3);
-            victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 100, 4, false, false));
-        }
-        // 9 天罚：等额无视护甲真伤
+        // 11 血之回响：伤害 × 当前生命值（本身有多少点生命，攻击力就乘多少）
+        amount = amount * Math.max(1.0F, attacker.getHealth());
+        event.setAmount(amount);
+        // 9 天罚：附加一段等值、无视护甲的真伤
+        // 17 归墟：附加一段与本次伤害等值的虚空伤害
         applyingTrueDamage = true;
         try {
             victim.hurt(victim.damageSources().genericKill(), amount);
+            victim.hurt(victim.damageSources().fellOutOfWorld(), amount);
         } finally {
             applyingTrueDamage = false;
         }
     }
 
-    /** 2 不朽：死亡无效；同时清除 76 旧伤 对已死亡目标的记忆 */
+    /** 是否是"虚空伤害"（跌出世界）。同时兼容 outOfWorld / fellOutOfWorld 两种 message id。 */
+    private static boolean isVoidDamage(net.minecraft.world.damagesource.DamageSource source) {
+        if (source == null) {
+            return false;
+        }
+        String id = source.getMsgId();
+        return "outOfWorld".equals(id) || "fellOutOfWorld".equals(id);
+    }
+
+    /** 2 不朽：死亡无效（回满并只清负面） */
     private static void onDeath(LivingDeathEvent event) {
         if (event.getEntity().level().isClientSide) {
             return;
         }
         if (event.getEntity() instanceof Player player && wearing(player)) {
             event.setCanceled(true);
-            player.setHealth(player.getMaxHealth());
-            player.setAbsorptionAmount(40.0F);
+            restoreVitals(player);
             player.setInvulnerable(false);
-            player.removeAllEffects();
-            return;
+            // 只清负面：原先的 removeAllEffects() 会连万法之域/夜视等自家增益一起清掉，
+            // 下个 tick 又被 refreshBuff 补回，造成"清了又补"的抖动。
+            clearNegativeEffects(player);
         }
-        // 其它生物死亡：遗忘所有玩家对它的旧伤记忆（换目标/目标死亡即归零）
-        forgetVictim(event.getEntity().getUUID());
     }
 
-    /** 5 净世：负面效果禁止上身 */
-    private static void onEffectAdded(MobEffectEvent.Added event) {
+    /**
+     * 5 净世：负面效果禁止上身。
+     *
+     * <p>用 {@link MobEffectEvent.Applicable}（HasResult，可 setResult(DENY)）在施加前拦截；
+     * {@code MobEffectEvent.Added} 不可取消，对其 setCanceled() 会崩服。
+     */
+    private static void onEffectApplicable(MobEffectEvent.Applicable event) {
         if (event.getEntity().level().isClientSide) {
             return;
         }
         if (event.getEntity() instanceof Player player && wearing(player)
-                && event.getEffectInstance() != null
                 && !event.getEffectInstance().getEffect().isBeneficial()) {
-            event.setCanceled(true);
+            event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
         }
     }
 
