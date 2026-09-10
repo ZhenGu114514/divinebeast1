@@ -426,6 +426,22 @@
 			x: 4.0d
 			y: 8.0d
 		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.keys.intro\"}"
+				"{\"translate\":\"divinebeast.ftb.keys.c\"}"
+				"{\"translate\":\"divinebeast.ftb.keys.x\"}"
+				"{\"translate\":\"divinebeast.ftb.keys.v\"}"
+				"{\"translate\":\"divinebeast.ftb.keys.z\"}"
+			]
+			id: "1D1CEA57E0002000"
+			optional: true
+			shape: "square"
+			size: 1.5d
+			title: "{\"translate\":\"divinebeast.ftb.keys.task\"}"
+			x: -2.0d
+			y: 0.0d
+		}
 	]
 	title: "{\"translate\":\"divinebeast.ftb.chapter\"}"
 }

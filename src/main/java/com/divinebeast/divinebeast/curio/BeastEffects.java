@@ -159,8 +159,25 @@ public final class BeastEffects {
         return lawWorn(entity, 4) ? 3 : 2;
     }
 
+    /**
+     * 某项诅咒是否仍生效（阶段一 = 诅咒，且对应法则未佩戴）。
+     *
+     * <p>真者祂形态已超越兽系一切阶段：佩戴『真者祂』期间，兽系全部诅咒一律不生效，
+     * 否则会出现"真者祂的效果反而被低阶诅咒废掉"的情况（攻击 50% 落空、
+     * 伤害被强制固定为 1 点、治疗反噬、致死后原地半血等）。
+     */
     private static boolean curseActive(LivingEntity entity, int index) {
+        if (isHeTrueActive(entity)) {
+            return false;
+        }
         return stageOf(entity) == 1 && !lawWorn(entity, index);
+    }
+
+    /** 该生物是否是"处于真者祂形态的玩家"（且未被救赎/本心封印）。 */
+    private static boolean isHeTrueActive(LivingEntity entity) {
+        return entity instanceof Player player
+                && AscensionEffects.wearingHeTrue(player)
+                && !AscensionEffects.effectsDisabled(player);
     }
 
     private static int lawCount(LivingEntity entity) {

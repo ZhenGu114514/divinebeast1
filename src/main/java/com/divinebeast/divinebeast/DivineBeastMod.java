@@ -58,6 +58,9 @@ public class DivineBeastMod {
         // 脑后星环光环（Z 键本地开关）：任意客户端都注册，内部 Curios 缺失时空转
         DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> com.divinebeast.divinebeast.client.OrbitAuraClient.init());
+        // 真者祂「蹈水履火」客户端侧：水/岩浆中视野无遮挡 + 移速不降低
+        DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> () -> com.divinebeast.divinebeast.client.HeTrueLiquidClient.init());
         // FTB Quests 可选前置：装有时把内置任务书章节注入服务端 config（不引用 FTB 类）
         com.divinebeast.divinebeast.integration.FTBQuestsCompat.registerIfPresent();
 

@@ -47,7 +47,8 @@ import java.util.UUID;
  *       且 17 归墟 追加一段<b>与本次伤害等值的虚空伤害</b>；</li>
  *   <li>8 神能 攻击速度 → <b>+1000</b>；</li>
  *   <li>6 磐石 击退抗性 → <b>+100</b>；</li>
- *   <li>蹈水履火 → <b>清空身边 5 格内的水与岩浆</b>，离开半径/离开形态后自动还原；</li>
+ *   <li>蹈水履火 → <b>在水与岩浆中视野不受遮挡、移速不降低</b>
+ *       （纯客户端实现，见 {@code client.HeTrueLiquidClient}；原"吸收岩浆"已移除）；</li>
  *   <li>万法附魔 → <b>只对「木棍」生效</b>，并把名称改为「棍木」；</li>
  *   <li>18 界缚 → <b>只拦"别的玩家用 /tp 传送我"</b>；自己发的 /tp（传自己、传别人、传坐标）、
  *       以及<b>无玩家发起者的传送（控制台 / 命令方块 / 其它模组的强制传送）全部放行</b>；</li>
@@ -90,12 +91,6 @@ public final class HeTrueEffects {
     private static final double REPEL_RADIUS = 12.0D;
     /** 斥力场把弹射物弹开的速度（格/tick） */
     private static final double REPEL_SPEED = 2.0D;
-    /** 蹈水履火（改写）：以玩家为中心清空水/岩浆的半径（格） */
-    private static final int FLUID_CLEAR_RADIUS = 5;
-    /** 记录"被本引擎清空"的流体方块 → 其原始状态，用于离开半径/离开形态时还原 */
-    private static final java.util.Map<java.util.UUID,
-            java.util.Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState>>
-            CLEARED_FLUIDS = new java.util.HashMap<>();
     /** 最近一次"由玩家执行的指令"的发起者 UUID 与其发生的时间戳（用于判定传送发起人） */
     private static java.util.UUID lastCommandIssuer = null;
     private static long lastCommandIssuerMillis = 0L;
@@ -235,8 +230,7 @@ public final class HeTrueEffects {
                 "divinebeast_he_true_kb", 100.0D);
         ensureAttribute(player, Attributes.MAX_HEALTH, MAX_HEALTH_MOD,
                 "divinebeast_he_true_maxhp", 2000.0D);
-        // 蹈水履火（改写）：清空身边 5 格内的水/岩浆，离开后自动还原（见 clearFluidsAround）
-        clearFluidsAround(player);
+        // 蹈水履火（改写）：水/岩浆中视野无遮挡、移速不降低 —— 全客户端实现，见 HeTrueLiquidClient
         // 万藏：动态通用(curio)槽 = 99 + 已装通用饰品件数
         syncCurioHoard(player);
 
@@ -421,79 +415,11 @@ public final class HeTrueEffects {
     }
 
     /**
-     * 蹈水履火（改写）：以自己为中心、半径 {@code FLUID_CLEAR_RADIUS} 格内的
-     * <b>水与岩浆全部清空</b>（置为空气）；本记录会持续把"又被水流填回"的格子再次清空。
-     * 一旦某格离开半径范围（或离开真者祂形态），就<b>把原方块还原回来</b>。
-     *
-     * <p>实现要点：
-     * <ul>
-     *   <li>只处理"液体方块本身"（{@code LiquidBlock}），避免破坏含水的方块（如水槽/海带）；</li>
-     *   <li>首次清空前先把原始 BlockState 存进 {@link #CLEARED_FLUIDS}，用于还原；</li>
-     *   <li>只记录本引擎清掉的格子，绝不动其它来源的改动。</li>
-     * </ul>
+     * 蹈水履火（改写）：<b>在水与岩浆中视野不受遮挡、移速不降低</b>。
+     * 该项完全由客户端实现（雾/遮罩/移动都在客户端计算），见
+     * {@code com.divinebeast.divinebeast.client.HeTrueLiquidClient}。
+     * 原先"吸收岩浆"的实现已按需求移除。
      */
-    private static void clearFluidsAround(Player player) {
-        if (player.tickCount % 5 != 0) {
-            return; // 节流：一次扫描 11×11×11 格，每 5 tick 跑一次即可
-        }
-        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
-            return;
-        }
-        java.util.Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState> cleared =
-                CLEARED_FLUIDS.computeIfAbsent(player.getUUID(), k -> new java.util.HashMap<>());
-        net.minecraft.core.BlockPos center = player.blockPosition();
-        double radiusSqr = (double) FLUID_CLEAR_RADIUS * (double) FLUID_CLEAR_RADIUS;
-
-        // 1) 已离开半径的格子：还原
-        java.util.Iterator<java.util.Map.Entry<net.minecraft.core.BlockPos,
-                net.minecraft.world.level.block.state.BlockState>> it = cleared.entrySet().iterator();
-        while (it.hasNext()) {
-            java.util.Map.Entry<net.minecraft.core.BlockPos,
-                    net.minecraft.world.level.block.state.BlockState> entry = it.next();
-            net.minecraft.core.BlockPos pos = entry.getKey();
-            double dx = pos.getX() - center.getX();
-            double dy = pos.getY() - center.getY();
-            double dz = pos.getZ() - center.getZ();
-            if (dx * dx + dy * dy + dz * dz > radiusSqr) {
-                level.setBlock(pos, entry.getValue(), 3);
-                it.remove();
-            }
-        }
-
-        // 2) 半径内的流体：清空（含"又被填回"的格子）
-        int r = FLUID_CLEAR_RADIUS;
-        for (net.minecraft.core.BlockPos mutable : net.minecraft.core.BlockPos.betweenClosed(
-                center.offset(-r, -r, -r), center.offset(r, r, r))) {
-            net.minecraft.core.BlockPos pos = mutable.immutable();
-            net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
-            boolean isFluidBlock = state.getBlock() instanceof net.minecraft.world.level.block.LiquidBlock
-                    && (state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)
-                        || state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA));
-            if (cleared.containsKey(pos)) {
-                // 曾被清空：若又被液体填回，再清一次（保持"空的")
-                if (isFluidBlock) {
-                    level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
-                }
-            } else if (isFluidBlock) {
-                cleared.put(pos, state);
-                level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
-            }
-        }
-    }
-
-    /** 离开形态时把本引擎清空的流体全部还原。 */
-    private static void restoreFluids(Player player) {
-        java.util.Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState> cleared =
-                CLEARED_FLUIDS.remove(player.getUUID());
-        if (cleared == null || cleared.isEmpty()
-                || !(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
-            return;
-        }
-        for (java.util.Map.Entry<net.minecraft.core.BlockPos,
-                net.minecraft.world.level.block.state.BlockState> entry : cleared.entrySet()) {
-            level.setBlock(entry.getKey(), entry.getValue(), 3);
-        }
-    }
 
     /**
      * 万藏：固定为通用(curio)槽 +99 个（不再随已装件数增长）。
@@ -550,7 +476,6 @@ public final class HeTrueEffects {
 
     private static void removeMods(Player player) {
         applyStrideAbilities(player, false); // 还原被放大的飞行能力值
-        restoreFluids(player); // 还原被蹈水履火清空的水/岩浆
         // 每个 UUID 只属于一条属性，按 1:1 精确移除即可。
         // （原先用一个"6 UUID × 6 属性"的双层循环，实际产生 36 次无意义尝试。）
         removeAttributeModifier(player, Attributes.ATTACK_DAMAGE, DAMAGE_MOD);
@@ -570,7 +495,9 @@ public final class HeTrueEffects {
                 player.removeEffect(effect);
             }
         }
-        if (player.getAbilities().mayfly) {
+        // 飞行：仅当没有其它形态（救赎 phaseTwo）在维持时才收回，
+        // 否则刚退出真者祂就会把救赎的飞行一起掐掉（且对方的授予分支只重开 mayfly、不重开 flying）。
+        if (player.getAbilities().mayfly && !CuriosEffects.isPhaseTwo(player)) {
             player.getAbilities().mayfly = false;
             player.getAbilities().flying = false;
             if (player instanceof ServerPlayer sp) {
@@ -703,8 +630,11 @@ public final class HeTrueEffects {
         // 11 血之回响：伤害 × 当前生命值（本身有多少点生命，攻击力就乘多少）
         amount = amount * Math.max(1.0F, attacker.getHealth());
         event.setAmount(amount);
-        // 9 天罚：附加一段等值、无视护甲的真伤
-        // 17 归墟：附加一段与本次伤害等值的虚空伤害
+        // 9 天罚（附加等值无视护甲真伤）与 17 归墟（附加等值虚空伤害）
+        // 与「10 光之领域」共用同一个 V 键开关：关掉即两者都不再附加。
+        if (!CuriosEffectsState.htrueBeaconToggle(attacker)) {
+            return;
+        }
         applyingTrueDamage = true;
         try {
             victim.hurt(victim.damageSources().genericKill(), amount);

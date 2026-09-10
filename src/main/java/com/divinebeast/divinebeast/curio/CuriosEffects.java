@@ -160,12 +160,28 @@ public final class CuriosEffects {
         return true;
     }
 
-    /** 某项负面是否仍生效（阶段一且对应时刻饰品未佩戴） */
+    /**
+     * 某项负面是否仍生效（阶段一且对应时刻饰品未佩戴）。
+     *
+     * <p>真者祂形态已超越祂系一切阶段：佩戴『真者祂』期间，祂系全部阶段一负面一律不生效，
+     * 否则会出现"真者祂的效果反而被低阶诅咒废掉"的情况（经验被归零、攻击变成给目标回血、
+     * 工具耐久锁 1、生命上限被锁到 2 等）。
+     */
     private static boolean curseActive(LivingEntity entity, int curseIndex) {
         if (phaseTwo(entity)) {
             return false;
         }
+        if (isHeTrueActive(entity)) {
+            return false;
+        }
         return wearingDeity(entity) && !wearingMoment(entity, curseIndex);
+    }
+
+    /** 该生物是否是"处于真者祂形态的玩家"（且未被救赎/本心封印）。 */
+    private static boolean isHeTrueActive(LivingEntity entity) {
+        return entity instanceof Player player
+                && AscensionEffects.wearingHeTrue(player)
+                && !AscensionEffects.effectsDisabled(player);
     }
 
     /** 已就位的时刻饰品数量 */
@@ -303,6 +319,14 @@ public final class CuriosEffects {
                 serverPlayer.onUpdateAbilities();
             }
         } else if (player.getAbilities().mayfly) {
+            // 【重要】真者祂形态的「3 永恒之翼」飞行由 HeTrueEffects 维持。
+            // 本方法在"非救赎阶段"每 tick 都会走到这里，若此时回收飞行，
+            // 会与 HeTrueEffects 的授予形成每 tick 互相打架：
+            // HeTrueEffects 只会重开 mayfly、不会重开 flying，于是玩家双击空格起飞后
+            // 每 tick 都被强制 flying=false 踢下来 —— 表现为"真者祂无法飞行"。
+            if (AscensionEffects.wearingHeTrue(player) && !AscensionEffects.effectsDisabled(player)) {
+                return; // 飞行交由真者祂引擎维持，这里不动
+            }
             player.getAbilities().mayfly = false;
             player.getAbilities().flying = false;
             if (serverPlayer != null) {

@@ -33,10 +33,14 @@ import java.util.List;
  *       每玩家独立 try、异常改为限频日志；圆环叠加多层细线并外扩一圈以保证可见。</li>
  * </ul>
  *
- * <p>圆环平面始终竖直（垂直于地面），法向取玩家本体水平朝向（yBodyRot，跟随本体转向、
- * 不随视角/镜头旋转）；圆心放在脑后、整体上移 1/4 格。低阶形态（衪/兽）各画一个大环，
- * 半径逐层外扩；证悟系（祂者初/极/真）不覆盖低阶，而是画成等比缩小、更向内、中心在大环
- * 上方 1/4 格的小环，环上的小圆与光线绕中心旋转（数量 = 已装备下级饰品数）。
+ * <p>圆环平面始终竖直（垂直于地面）。<b>朝向分两套</b>：
+ * <ul>
+ *   <li><b>低阶大圆环</b>：法向取玩家<b>本体</b>水平朝向（{@code yBodyRot}）→ 随身体转动；</li>
+ *   <li><b>证悟小环</b>：法向取玩家<b>视线</b>水平朝向（{@code getYRot()}）→ 随视角转动。</li>
+ * </ul>
+ * 圆心放在脑后、整体上移 1/4 格。低阶形态（衪/兽）各画一个大环，半径逐层外扩；
+ * 证悟系（祂者初/极/真）不覆盖低阶，而是画成等比缩小、更向内、中心在大环上方 1/4 格的小环，
+ * 环上的小圆与光线绕中心旋转（数量 = 已装备下级饰品数）。
  *
  * <p>每个环 = 1 条粗线 + 2 条细线，全部用线条建模、无粒子。
  * 形态颜色暂时为占位色，后续按"名字颜色"替换。
@@ -239,9 +243,17 @@ public final class OrbitAuraClient {
         return new Vec3(hx, hy, hz);
     }
 
-    /** 用玩家本体水平朝向（yBodyRot）而非镜头朝向（getYRot）→ 环跟随本体转向、不随视角旋转。 */
-    private static Vec3 horizontalFacing(Player p) {
-        double yaw = Math.toRadians(p.yBodyRot);
+    /**
+     * 由指定 yaw 求水平朝向单位向量。
+     *
+     * <p>两套朝向分别给两套环用：
+     * <ul>
+     *   <li><b>大圆环</b>用 {@code yBodyRot}（玩家<b>本体</b>朝向）→ 环随身体转动；</li>
+     *   <li><b>证悟小环</b>用 {@code getYRot()}（玩家<b>视线</b>朝向）→ 环随视角转动。</li>
+     * </ul>
+     */
+    private static Vec3 horizontalFacing(float yawDegrees) {
+        double yaw = Math.toRadians(yawDegrees);
         return new Vec3(-Math.sin(yaw), 0.0D, Math.cos(yaw)).normalize();
     }
 
@@ -317,14 +329,16 @@ public final class OrbitAuraClient {
         Vec3 cam = event.getCamera().getPosition();
         float partialTick = event.getPartialTick();
         Vec3 head = headCenter(target, partialTick);
-        Vec3 facing = horizontalFacing(target);
+        // 大圆环跟随"本体"（yBodyRot）；证悟小环跟随"视角"（getYRot）
+        Vec3 bodyFacing = horizontalFacing(target.yBodyRot);
+        Vec3 viewFacing = horizontalFacing(target.getYRot());
 
         PoseStack pose = event.getPoseStack();
         pose.pushPose();
         MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         try {
             int subCount = equippedSubCount(target);
-            // 1) 低阶大环：半径逐层外扩，圆心在脑后、上移
+            // 1) 低阶大环：半径逐层外扩，圆心在脑后、上移；朝向跟随"本体"
             int bigIndex = 0;
             for (Form form : forms) {
                 if (form.awakening) {
@@ -332,14 +346,14 @@ public final class OrbitAuraClient {
                 }
                 try {
                     double radius = RING_BASE + bigIndex * RING_STEP;
-                    Vec3 center = head.add(facing.scale(-CENTER_BACK)).add(0.0D, CENTER_UP, 0.0D);
-                    renderRing(pose, buffers, cam, center, facing, radius, form, gameTime, subCount, false);
+                    Vec3 center = head.add(bodyFacing.scale(-CENTER_BACK)).add(0.0D, CENTER_UP, 0.0D);
+                    renderRing(pose, buffers, cam, center, bodyFacing, radius, form, gameTime, subCount, false);
                     bigIndex++;
                 } catch (Throwable t) {
                     logThrottledError("渲染 " + form.display + " 圆环异常", t);
                 }
             }
-            // 2) 证悟小环：等比更小、平行、更向内、中心在大环上方 1/4 格
+            // 2) 证悟小环：等比更小、平行、更向内、中心在大环上方 1/4 格；朝向跟随"视角"
             int smallIndex = 0;
             for (Form form : forms) {
                 if (!form.awakening) {
@@ -350,9 +364,9 @@ public final class OrbitAuraClient {
                     if (radius < 0.12D) {
                         radius = 0.12D;
                     }
-                    Vec3 center = head.add(facing.scale(-SMALL_RING_BACK))
+                    Vec3 center = head.add(viewFacing.scale(-SMALL_RING_BACK))
                             .add(0.0D, CENTER_UP + SMALL_RING_UP, 0.0D);
-                    renderRing(pose, buffers, cam, center, facing, radius, form, gameTime, subCount, true);
+                    renderRing(pose, buffers, cam, center, viewFacing, radius, form, gameTime, subCount, true);
                     smallIndex++;
                 } catch (Throwable t) {
                     logThrottledError("渲染 " + form.display + " 小环异常", t);
