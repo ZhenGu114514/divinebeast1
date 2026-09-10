@@ -55,6 +55,8 @@ import java.util.UUID;
  *   <li>1 太初 / 18 界缚 → 追加 <b>免疫 /kill（genericKill）</b>；</li>
  *   <li>额外保护：<b>不对 MmmMmmMmmMmm 的试验假人（mmm:dummy）施加附加伤害</b>；</li>
  *   <li>10 光之领域 → 改为 <b>V 键开关</b>（默认开）；神行仍为 X 键（×2 ≈ 速度 V）。</li>
+ *   <li>所有药水类效果 → 统一 <b>时长 1 分钟（1200 tick）、每 1 秒补发一次</b>，
+ *       修复"夜视一闪一闪"（剩余时长落入原版夜视闪烁区间）。</li>
  * </ul>
  *
  * <p>原 #88「造化」复制权能已按需求移除，改为：真者祂击杀任意生物时掉落物品×10、
@@ -103,6 +105,18 @@ public final class HeTrueEffects {
     private static final double BEACON_RADIUS = 16.0D;
     /** 磁界拉取范围（格，AABB 边长） */
     private static final double MAGNET_RADIUS = 16.0D;
+    /**
+     * 所有"给药水"效果的统一时长：<b>1 分钟</b>（1200 tick）。
+     *
+     * <p>原先夜视只有 400 tick 并且 100 tick 才补发一次，取整后在"补发 → 自然耗光"
+     * 之间来回，剩余时长会长时间停在原版
+     * {@code GameRenderer#getNightVisionScale} 的<b>闪烁区间</b>（剩余 &lt; 200 tick 时
+     * 亮度按 {@code 0.7 + sin(duration × 0.2π) × 0.3} 振荡），视觉上就是"一闪一闪"。
+     * 给足一分钟时长 + 每秒拉满，可彻底避开该区间。
+     */
+    private static final int EFFECT_DURATION = 1200;
+    /** 效果补发周期：每 1 秒（20 tick）重新施加一次，使剩余时长恒定贴着满值 1200 */
+    private static final int EFFECT_REFRESH_TICKS = 20;
     /** 当前处于真者祂形态的玩家（用于离开形态时精确回收本引擎效果） */
     private static final java.util.Set<java.util.UUID> ACTIVE = new java.util.HashSet<>();
 
@@ -176,22 +190,23 @@ public final class HeTrueEffects {
         }
         // ---- 2 不朽 / 13 命泉：生命与吸收回满 ----
         restoreVitals(player);
-        // ---- 7 全知之眼：夜视 ----
-        if (player.tickCount % 100 == 0) {
-            player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0, false, false));
+        // ---- 7 全知之眼：夜视（时长 1 分钟，每 1 秒补发一次，恒不满期 → 不闪烁）----
+        if (player.tickCount % EFFECT_REFRESH_TICKS == 0) {
+            player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION,
+                    EFFECT_DURATION, 0, false, false));
         }
-        // ---- 万法之域：常驻增益族（时长到期前补发）----
+        // ---- 万法之域：常驻增益族（时长 1 分钟，每 1 秒补发拉满）----
         // 去重说明：力量/移速/再生/水下呼吸 原先同时用"药水"和"属性/直接写入"两条渠道，
         // 数值上完全被后者覆盖（ATTACK_DAMAGE +5000、MOVEMENT_SPEED +2.4、
         // 每 tick setHealth(max)、每 tick setAirSupply(max)），故不再重复给药水。
         // 防火保留：FIRE_RESISTANCE 额外降低岩浆伤害，是 clearFire() 覆盖不到的。
-        if (player.tickCount % 80 == 0) {
-            refreshBuff(player, MobEffects.DAMAGE_RESISTANCE, 4, 320);
-            refreshBuff(player, MobEffects.JUMP, 5, 320);
-            refreshBuff(player, MobEffects.LUCK, 5, 320);
-            refreshBuff(player, MobEffects.FIRE_RESISTANCE, 0, 320);
+        if (player.tickCount % EFFECT_REFRESH_TICKS == 0) {
+            refreshBuff(player, MobEffects.DAMAGE_RESISTANCE, 4, EFFECT_DURATION);
+            refreshBuff(player, MobEffects.JUMP, 5, EFFECT_DURATION);
+            refreshBuff(player, MobEffects.LUCK, 5, EFFECT_DURATION);
+            refreshBuff(player, MobEffects.FIRE_RESISTANCE, 0, EFFECT_DURATION);
             // 89 摧岳：极高挖掘速度（高等级急迫 = 高倍率，非创造式瞬破）
-            refreshBuff(player, MobEffects.DIG_SPEED, 200, 320);
+            refreshBuff(player, MobEffects.DIG_SPEED, 200, EFFECT_DURATION);
         }
         // ---- 20 神之饱足 ----
         if (player.getFoodData().getFoodLevel() < 20) {
@@ -252,13 +267,21 @@ public final class HeTrueEffects {
                 }
             }
         }
-        // ---- 7 全知之眼：察觉众生（每 5 秒）----
-        if (player.tickCount % 100 == 0) {
+        // ---- 7 全知之眼：察觉众生（每 1 秒扫描一次；发光时长 1 分钟）----
+        // 说明：发光施加在**其它生物**身上，每 tick 秒都给半径内每一只生物重发一次
+        // 药水包会白白刷屏（ServerLevel 要向所有追踪者广播），故这里用"半程补发"：
+        // 剩余时长不足一半时才补满，既不会出现"亮一下灭一下"的空档，
+        // 又把广播频率降到 1/30。玩家自身的增益仍严格每秒补发。
+        if (player.tickCount % EFFECT_REFRESH_TICKS == 0) {
             for (LivingEntity living : player.level().getEntitiesOfClass(LivingEntity.class,
                     AABB.ofSize(player.position(), 48, 48, 48))) {
-                if (living.isAlive() && !living.is(player)
-                        && living.getEffect(MobEffects.GLOWING) == null) {
-                    living.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0, false, false));
+                if (!living.isAlive() || living.is(player)) {
+                    continue;
+                }
+                MobEffectInstance glow = living.getEffect(MobEffects.GLOWING);
+                if (glow == null || glow.getDuration() < EFFECT_DURATION / 2) {
+                    living.addEffect(new MobEffectInstance(MobEffects.GLOWING,
+                            EFFECT_DURATION, 0, false, false));
                 }
             }
         }
@@ -405,11 +428,21 @@ public final class HeTrueEffects {
         }
     }
 
-    /** 仅在增益不足时补发，避免频繁 addEffect 覆盖计时。 */
+    /**
+     * 补发一条正面药水，并把剩余时长直接拉满到 {@code ticks}（当前统一为
+     * {@link #EFFECT_DURATION} = 1 分钟）。
+     *
+     * <p>调用点固定为每 {@link #EFFECT_REFRESH_TICKS} tick（1 秒）一次，
+     * 因此只要"剩余时长 &lt; 满值"就补 —— 结果就是每秒重新施加一次，
+     * 剩余时长恒定贴着 1200，永远不会进入夜视的闪烁区间。
+     *
+     * <p>旧实现的门槛是"剩余 &lt; 60 tick 才补"、周期 80 tick、时长 320 tick，
+     * 实际会让效果走到<b>自然到期</b>后才重新施加，中间出现空档（血量/亮度抖动）。
+     */
     private static void refreshBuff(Player player, net.minecraft.world.effect.MobEffect effect,
                                     int amplifier, int ticks) {
         MobEffectInstance current = player.getEffect(effect);
-        if (current == null || current.getDuration() < 60) {
+        if (current == null || current.getDuration() < ticks) {
             player.addEffect(new MobEffectInstance(effect, ticks, amplifier, false, false));
         }
     }
@@ -494,6 +527,14 @@ public final class HeTrueEffects {
                     && player.getEffect(effect).getAmplifier() >= 3) {
                 player.removeEffect(effect);
             }
+        }
+        // 夜视：本引擎每秒补发、时长 1 分钟，退出形态时一并回收（否则会白留最多 60 秒）。
+        // 只在"有限时长且剩余 ≤ 本引擎发放的 1200"时删，以免误删玩家自己的夜视药水（3600 tick）
+        // 或指令给的无限夜视（duration = -1）。
+        MobEffectInstance night = player.getEffect(MobEffects.NIGHT_VISION);
+        if (night != null && !night.isInfiniteDuration()
+                && night.getDuration() <= EFFECT_DURATION) {
+            player.removeEffect(MobEffects.NIGHT_VISION);
         }
         // 飞行：仅当没有其它形态（救赎 phaseTwo）在维持时才收回，
         // 否则刚退出真者祂就会把救赎的飞行一起掐掉（且对方的授予分支只重开 mayfly、不重开 flying）。

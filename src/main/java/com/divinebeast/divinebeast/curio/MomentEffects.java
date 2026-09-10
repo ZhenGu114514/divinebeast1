@@ -80,7 +80,23 @@ public final class MomentEffects {
     private static final long EXTEND_CAP_TICKS = 3_600_000L;
     private static final int REVIVE_INVULN_TICKS = 400;    // 20 秒无敌
     private static final int BASE_REVIVE_CD_SECONDS = 180; // 基础冷却 180 秒
-    private static final int MAX_STORED_EFFECTS = 12;
+    // 存储药水效果【无数量上限】：不再有 MAX_STORED_EFFECTS 之类的截断，
+    // 存多少就存多少（NBT 列表随存档保存）。
+    /**
+     * 「永久」时长的取值。{@code MobEffectInstance#isInfiniteDuration()} 的判定就是
+     * {@code duration == -1}，此类实例不会自然递减、也不会到期（HUD 上显示为 {@code **:**}）。
+     * 存放进『已存在存在时刻』的药水一律以此时长施加。
+     */
+    private static final int PERMANENT_DURATION = -1;
+    /**
+     * 本引擎已施加的【永久】存储效果：player uuid → 效果集合，用于"佩戴期间永久、摘下就收回"。
+     *
+     * <p>永久效果不会自然到期，摘下时必须显式 {@code removeEffect}。这里记录
+     * "本引擎真正发放过"的那几个效果，回收时只删自己发的，不会误伤玩家自己喝的药水
+     * 或其它模组给出的无限时长效果。
+     */
+    private static final java.util.Map<UUID, java.util.Set<MobEffect>> PERMANENT_STORED =
+            new java.util.HashMap<>();
 
     // 禁疗：entityId -> 到期 gameTime
     private static final java.util.Map<Integer, Long> NO_HEAL_UNTIL = new java.util.HashMap<>();
@@ -168,6 +184,10 @@ public final class MomentEffects {
             if (hasNoStatDecreaseData(player)) {
                 clearNoStatDecrease(player);
             }
+            // 封印期间『已存在存在时刻』的存储能力一并失效 → 已施加的永久药水效果收回
+            if (hasPermanentStored(player)) {
+                reclaimPermanentStored(player);
+            }
             return;
         }
 
@@ -179,8 +199,16 @@ public final class MomentEffects {
             clearNoStatDecrease(player);
         }
 
-        if (wornExistExist(player) && player.tickCount % 20 == 0) {
-            tickExistExist(player);
+        if (wornExistExist(player)) {
+            if (player.tickCount % 20 == 0) {
+                tickExistExist(player);
+            }
+        } else if (player.tickCount % 20 == 0
+                && (hasPermanentStored(player) || player.tickCount % 100 == 0)) {
+            // 摘下就收回：永久效果不会自然到期，必须显式收走。
+            // 内存里有记录时每秒收一次（摘下瞬间就归还）；没有记录（例如跨登录/重启后
+            // 内存已清空）则每 5 秒按物品 NBT 兜底回收一次，避免每秒做一次 Curios 能力查询。
+            reclaimPermanentStored(player);
         }
     }
 
@@ -360,6 +388,12 @@ public final class MomentEffects {
             if (!effect.isBeneficial()) {
                 continue;
             }
+            // 永久（无限时长）效果不参与"每秒 +2 秒"的续杯：
+            // duration = -1 做加法会得到 39 这类有限值，反而把永久效果毁掉
+            // （而且每秒 remove + add 一次会连带出 HUD/亮度抖动）。
+            if (instance.isInfiniteDuration()) {
+                continue;
+            }
             long newDuration = Math.min(EXTEND_CAP_TICKS, (long) instance.getDuration() + EXTEND_TICKS_PER_SECOND);
             if (newDuration != instance.getDuration()) {
                 player.removeEffect(effect);
@@ -411,9 +445,7 @@ public final class MomentEffects {
         }
         CompoundTag tag = container.getOrCreateTag();
         ListTag list = tag.getList(TAG_STORED_EFFECTS, 10);
-        while (list.size() >= MAX_STORED_EFFECTS) {
-            list.remove(0);
-        }
+        // 存储无数量上限：不再挤出旧条目（原先超过 12 条会从头部丢弃）
         int stored = 0;
         for (MobEffectInstance instance : effects) {
             net.minecraft.resources.ResourceLocation key =
@@ -424,7 +456,7 @@ public final class MomentEffects {
             CompoundTag entry = new CompoundTag();
             entry.putString(TAG_EFFECT_ID, key.toString());
             entry.putInt(TAG_AMPLIFIER, instance.getAmplifier());
-            entry.putInt(TAG_DURATION, instance.getDuration());
+            entry.putInt(TAG_DURATION, instance.getDuration()); // 仅作记录，回放时不再使用（一律永久）
             list.add(entry);
             stored++;
         }
@@ -453,12 +485,83 @@ public final class MomentEffects {
             if (effect == null) {
                 continue;
             }
-            int duration = entry.getInt(TAG_DURATION);
+            // 存放进去的药水是【永久】的：以无限时长（-1）施加，
+            // 不再沿用瓶子自身的时长（原实现读 TAG_DURATION 反复补发，
+            // 配合"每秒 +2 秒"虽然长期不灭，但严格说仍会到期，且会留下续杯空档）。
             int amplifier = entry.getInt(TAG_AMPLIFIER);
             MobEffectInstance existing = player.getEffect(effect);
-            if (existing == null || existing.getDuration() < duration) {
-                player.addEffect(new MobEffectInstance(effect, duration, amplifier));
+            if (existing != null && existing.isInfiniteDuration()
+                    && existing.getAmplifier() >= amplifier) {
+                // 已经是永久且等级不低于本条 → 无需施加（避免每秒刷药水包）。
+                // 用 >= 而不是"只要永久就跳过"：同一个效果可能存了不同等级的瓶子
+                // （例如力量 I 与力量 II），此时必须让更高等级那条照常施加才能升级。
+                PERMANENT_STORED.computeIfAbsent(player.getUUID(),
+                        k -> new java.util.HashSet<>()).add(effect);
+                continue;
             }
+            player.addEffect(new MobEffectInstance(effect, PERMANENT_DURATION, amplifier));
+            PERMANENT_STORED.computeIfAbsent(player.getUUID(),
+                    k -> new java.util.HashSet<>()).add(effect);
+        }
+    }
+
+    /** 本引擎当前是否给该玩家挂着永久存储效果（内存记录，代价只是一次 HashMap 查询） */
+    private static boolean hasPermanentStored(Player player) {
+        java.util.Set<MobEffect> set = PERMANENT_STORED.get(player.getUUID());
+        return set != null && !set.isEmpty();
+    }
+
+    /**
+     * 收回本引擎发放的全部永久存储效果 —— 摘下『已存在存在时刻』、清空存储、
+     * 或被救赎/本心封印时调用。
+     *
+     * <p>先把内存记录里的效果逐个收走；若内存记录为空（跨登录/服务器重启后静态表被清空，
+     * 但效果还挂在身上），则退化为读物品 NBT 列表兜底回收。
+     */
+    private static void reclaimPermanentStored(Player player) {
+        java.util.Set<MobEffect> set = PERMANENT_STORED.remove(player.getUUID());
+        if (set != null) {
+            for (MobEffect effect : new java.util.ArrayList<>(set)) {
+                MobEffectInstance current = player.getEffect(effect);
+                if (current != null && current.isInfiniteDuration()) {
+                    player.removeEffect(effect);
+                }
+            }
+        }
+        ItemStack container = findExistExistContainer(player);
+        if (container.isEmpty()) {
+            return;
+        }
+        CompoundTag tag = container.getTag();
+        if (tag == null) {
+            return;
+        }
+        ListTag list = tag.getList(TAG_STORED_EFFECTS, 10);
+        for (int i = 0; i < list.size(); i++) {
+            removeStoredEffect(player, list.getCompound(i));
+        }
+    }
+
+    /**
+     * 收走某条已存储药水在玩家身上的<b>永久实例</b>。
+     *
+     * <p>永久效果无法靠等待消失，必须显式 removeEffect，否则玩家在没有
+     * {@code /effect clear} 的情况下会永远甩不掉它们（清空存储、摘下饰品、被封印时都要调用）。
+     * 只删无限时长的实例，不碰玩家自己喝的有限时长同类药水。
+     */
+    private static void removeStoredEffect(Player player, CompoundTag entry) {
+        MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(
+                net.minecraft.resources.ResourceLocation.tryParse(entry.getString(TAG_EFFECT_ID)));
+        if (effect == null) {
+            return;
+        }
+        java.util.Set<MobEffect> set = PERMANENT_STORED.get(player.getUUID());
+        if (set != null) {
+            set.remove(effect);
+        }
+        MobEffectInstance current = player.getEffect(effect);
+        if (current != null && current.isInfiniteDuration()) {
+            player.removeEffect(effect);
         }
     }
 
@@ -477,6 +580,12 @@ public final class MomentEffects {
             // 手持『已存在存在时刻』右键 → 清空存储
             CompoundTag tag = held.getTag();
             if (tag != null) {
+                // 存储的药水是"永久"施加的（无限时长），清空时必须一并收走，
+                // 否则这些增益永远甩不掉（永久效果不会自然到期）。
+                ListTag list = tag.getList(TAG_STORED_EFFECTS, 10);
+                for (int i = 0; i < list.size(); i++) {
+                    removeStoredEffect(player, list.getCompound(i));
+                }
                 tag.remove(TAG_STORED_EFFECTS);
             }
             player.sendSystemMessage(Component.translatable("divinebeast.msg.potion_cleared"));
