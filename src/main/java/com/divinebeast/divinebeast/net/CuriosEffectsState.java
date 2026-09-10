@@ -12,6 +12,8 @@ public final class CuriosEffectsState {
     public static final String TAG_REDEMPTION_MARK = "divinebeast.redemption_mark";
     /** X 键：真者祂「神行」移速加成开关（默认开启） */
     public static final String TAG_HTRUE_SPEED_TOGGLE = "divinebeast.htrue_speed_toggle";
+    /** V 键：真者祂「10 光之领域」范围伤害开关（默认开启） */
+    public static final String TAG_HTRUE_BEACON_TOGGLE = "divinebeast.htrue_beacon_toggle";
 
     private CuriosEffectsState() {
     }
@@ -34,6 +36,16 @@ public final class CuriosEffectsState {
 
     public static void setHtrueSpeedToggle(Player player, boolean value) {
         player.getPersistentData().putBoolean(TAG_HTRUE_SPEED_TOGGLE, value);
+    }
+
+    /** 真者祂「10 光之领域」范围伤害：默认开启 */
+    public static boolean htrueBeaconToggle(Player player) {
+        return !player.getPersistentData().contains(TAG_HTRUE_BEACON_TOGGLE)
+                || player.getPersistentData().getBoolean(TAG_HTRUE_BEACON_TOGGLE);
+    }
+
+    public static void setHtrueBeaconToggle(Player player, boolean value) {
+        player.getPersistentData().putBoolean(TAG_HTRUE_BEACON_TOGGLE, value);
     }
 
     public static boolean hasRedemptionMark(net.minecraft.world.entity.LivingEntity entity) {

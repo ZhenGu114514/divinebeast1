@@ -42,6 +42,10 @@ public final class Networking {
                 ToggleSpeedMessage::encode,
                 ToggleSpeedMessage::decode,
                 ToggleSpeedMessage::handle);
+        CHANNEL.registerMessage(nextId++, ToggleBeaconMessage.class,
+                ToggleBeaconMessage::encode,
+                ToggleBeaconMessage::decode,
+                ToggleBeaconMessage::handle);
         CHANNEL.registerMessage(nextId++, ItemCopyMessage.class,
                 ItemCopyMessage::encode,
                 ItemCopyMessage::decode,

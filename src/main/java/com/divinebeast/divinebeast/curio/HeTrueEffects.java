@@ -20,6 +20,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityTeleportEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
@@ -45,7 +46,14 @@ import java.util.UUID;
  *   <li>1 太初 / 17 归墟 → <b>免疫虚空伤害</b>（不再"从虚空中拉回"）；
  *       且 17 归墟 追加一段<b>与本次伤害等值的虚空伤害</b>；</li>
  *   <li>8 神能 攻击速度 → <b>+1000</b>；</li>
- *   <li>6 磐石 击退抗性 → <b>+100</b>。</li>
+ *   <li>6 磐石 击退抗性 → <b>+100</b>；</li>
+ *   <li>蹈水履火 → <b>清空身边 5 格内的水与岩浆</b>，离开半径/离开形态后自动还原；</li>
+ *   <li>万法附魔 → <b>只对「木棍」生效</b>，并把名称改为「棍木」；</li>
+ *   <li>18 界缚 → <b>只拦"别的玩家用 /tp 传送我"</b>；自己发的 /tp（传自己、传别人、传坐标）、
+ *       以及<b>无玩家发起者的传送（控制台 / 命令方块 / 其它模组的强制传送）全部放行</b>；</li>
+ *   <li>1 太初 / 18 界缚 → 追加 <b>免疫 /kill（genericKill）</b>；</li>
+ *   <li>额外保护：<b>不对 MmmMmmMmmMmm 的试验假人（mmm:dummy）施加附加伤害</b>；</li>
+ *   <li>10 光之领域 → 改为 <b>V 键开关</b>（默认开）；神行仍为 X 键（×2 ≈ 速度 V）。</li>
  * </ul>
  *
  * <p>原 #88「造化」复制权能已按需求移除，改为：真者祂击杀任意生物时掉落物品×10、
@@ -82,6 +90,17 @@ public final class HeTrueEffects {
     private static final double REPEL_RADIUS = 12.0D;
     /** 斥力场把弹射物弹开的速度（格/tick） */
     private static final double REPEL_SPEED = 2.0D;
+    /** 蹈水履火（改写）：以玩家为中心清空水/岩浆的半径（格） */
+    private static final int FLUID_CLEAR_RADIUS = 5;
+    /** 记录"被本引擎清空"的流体方块 → 其原始状态，用于离开半径/离开形态时还原 */
+    private static final java.util.Map<java.util.UUID,
+            java.util.Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState>>
+            CLEARED_FLUIDS = new java.util.HashMap<>();
+    /** 最近一次"由玩家执行的指令"的发起者 UUID 与其发生的时间戳（用于判定传送发起人） */
+    private static java.util.UUID lastCommandIssuer = null;
+    private static long lastCommandIssuerMillis = 0L;
+    /** 判定"本次传送是否由刚执行的指令触发"的时间窗口（毫秒）。指令是同步执行的，故取很小值。 */
+    private static final long COMMAND_ISSUER_WINDOW_MS = 100L;
 
     /** 天罚追加真伤防递归标记 */
     private static boolean applyingTrueDamage = false;
@@ -97,6 +116,7 @@ public final class HeTrueEffects {
 
     public static void register() {
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onPlayerTick);
+        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onLivingAttack);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onLivingDamage);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onDeath);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onEffectApplicable);
@@ -105,6 +125,8 @@ public final class HeTrueEffects {
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onTargetChange);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onXpChange);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onTeleportCommand);
+        // 记录指令发起者（用于区分"自己传送"与"别人传送我"）
+        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onCommand);
         // 造化（复制）已移除 → 挖掘/击杀掉落 ×10
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onLivingDrops);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onBlockBreak);
@@ -135,6 +157,8 @@ public final class HeTrueEffects {
         ACTIVE.add(player.getUUID());
         // X 键开关：神行 行/飞/游 移速加成（默认开，见 CuriosEffectsState）
         boolean strideSpeed = CuriosEffectsState.htrueSpeedToggle(player);
+        // V 键开关：10 光之领域 范围伤害（默认开）
+        boolean beaconOn = CuriosEffectsState.htrueBeaconToggle(player);
         // ---- 1 太初 / 17 归墟：免疫虚空伤害（不再"从虚空中拉回"，拦截见 onLivingDamage）----
         // 注：改为免疫后不再传送回安全高度；若坠入虚空会持续下坠，需自行飞回（本形态自带创造式飞行）。
         // ---- 3 永恒之翼：创造式飞行 ----
@@ -211,8 +235,8 @@ public final class HeTrueEffects {
                 "divinebeast_he_true_kb", 100.0D);
         ensureAttribute(player, Attributes.MAX_HEALTH, MAX_HEALTH_MOD,
                 "divinebeast_he_true_maxhp", 2000.0D);
-        // 蹈水履火：可于水面与岩浆表面行走（不深潜/不飞行时生效）
-        walkOnLiquids(player);
+        // 蹈水履火（改写）：清空身边 5 格内的水/岩浆，离开后自动还原（见 clearFluidsAround）
+        clearFluidsAround(player);
         // 万藏：动态通用(curio)槽 = 99 + 已装通用饰品件数
         syncCurioHoard(player);
 
@@ -222,8 +246,8 @@ public final class HeTrueEffects {
         if (player.tickCount % 20 == 0) {
             applyDivineEnchantments(player);
         }
-        // ---- 10 光之领域（每秒）----
-        if (player.tickCount % 20 == 0) {
+        // ---- 10 光之领域（每秒；V 键可开关）----
+        if (beaconOn && player.tickCount % 20 == 0) {
             float beaconDmg = 50.0F + player.experienceLevel;
             for (LivingEntity mob : player.level().getEntitiesOfClass(LivingEntity.class,
                     AABB.ofSize(player.position(), BEACON_RADIUS * 2, BEACON_RADIUS * 2, BEACON_RADIUS * 2))) {
@@ -397,35 +421,77 @@ public final class HeTrueEffects {
     }
 
     /**
-     * 蹈水履火：在水面或岩浆表面“站立行走”。
-     * 逻辑：脚部位于对应液体时，只要玩家未潜行下潜、也未主动飞行，
-     * 就把向下运动抵消并把脚部托回液面；潜行或飞行时正常下潜/飞行。
+     * 蹈水履火（改写）：以自己为中心、半径 {@code FLUID_CLEAR_RADIUS} 格内的
+     * <b>水与岩浆全部清空</b>（置为空气）；本记录会持续把"又被水流填回"的格子再次清空。
+     * 一旦某格离开半径范围（或离开真者祂形态），就<b>把原方块还原回来</b>。
+     *
+     * <p>实现要点：
+     * <ul>
+     *   <li>只处理"液体方块本身"（{@code LiquidBlock}），避免破坏含水的方块（如水槽/海带）；</li>
+     *   <li>首次清空前先把原始 BlockState 存进 {@link #CLEARED_FLUIDS}，用于还原；</li>
+     *   <li>只记录本引擎清掉的格子，绝不动其它来源的改动。</li>
+     * </ul>
      */
-    private static void walkOnLiquids(Player player) {
-        if (player.isShiftKeyDown() || player.getAbilities().flying) {
+    private static void clearFluidsAround(Player player) {
+        if (player.tickCount % 5 != 0) {
+            return; // 节流：一次扫描 11×11×11 格，每 5 tick 跑一次即可
+        }
+        if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return;
         }
-        net.minecraft.world.level.Level level = player.level();
-        net.minecraft.core.BlockPos feet = player.blockPosition();
-        net.minecraft.world.level.material.FluidState fluid = level.getFluidState(feet);
-        boolean onWater = fluid.is(net.minecraft.tags.FluidTags.WATER);
-        boolean onLava = fluid.is(net.minecraft.tags.FluidTags.LAVA);
-        if (!onWater && !onLava) {
+        java.util.Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState> cleared =
+                CLEARED_FLUIDS.computeIfAbsent(player.getUUID(), k -> new java.util.HashMap<>());
+        net.minecraft.core.BlockPos center = player.blockPosition();
+        double radiusSqr = (double) FLUID_CLEAR_RADIUS * (double) FLUID_CLEAR_RADIUS;
+
+        // 1) 已离开半径的格子：还原
+        java.util.Iterator<java.util.Map.Entry<net.minecraft.core.BlockPos,
+                net.minecraft.world.level.block.state.BlockState>> it = cleared.entrySet().iterator();
+        while (it.hasNext()) {
+            java.util.Map.Entry<net.minecraft.core.BlockPos,
+                    net.minecraft.world.level.block.state.BlockState> entry = it.next();
+            net.minecraft.core.BlockPos pos = entry.getKey();
+            double dx = pos.getX() - center.getX();
+            double dy = pos.getY() - center.getY();
+            double dz = pos.getZ() - center.getZ();
+            if (dx * dx + dy * dy + dz * dz > radiusSqr) {
+                level.setBlock(pos, entry.getValue(), 3);
+                it.remove();
+            }
+        }
+
+        // 2) 半径内的流体：清空（含"又被填回"的格子）
+        int r = FLUID_CLEAR_RADIUS;
+        for (net.minecraft.core.BlockPos mutable : net.minecraft.core.BlockPos.betweenClosed(
+                center.offset(-r, -r, -r), center.offset(r, r, r))) {
+            net.minecraft.core.BlockPos pos = mutable.immutable();
+            net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
+            boolean isFluidBlock = state.getBlock() instanceof net.minecraft.world.level.block.LiquidBlock
+                    && (state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)
+                        || state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA));
+            if (cleared.containsKey(pos)) {
+                // 曾被清空：若又被液体填回，再清一次（保持"空的")
+                if (isFluidBlock) {
+                    level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+                }
+            } else if (isFluidBlock) {
+                cleared.put(pos, state);
+                level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+            }
+        }
+    }
+
+    /** 离开形态时把本引擎清空的流体全部还原。 */
+    private static void restoreFluids(Player player) {
+        java.util.Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState> cleared =
+                CLEARED_FLUIDS.remove(player.getUUID());
+        if (cleared == null || cleared.isEmpty()
+                || !(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
             return;
         }
-        double surfaceY = feet.getY() + fluid.getHeight(level, feet);
-        // 已没入过深（如主动下潜超过约半格）则交还正常浮力，避免强行抬升卡墙
-        if (player.getY() < surfaceY - 0.45D) {
-            return;
-        }
-        net.minecraft.world.phys.Vec3 motion = player.getDeltaMovement();
-        if (player.getY() < surfaceY) {
-            // 托回液面
-            double lift = Math.min(0.2D, surfaceY - player.getY());
-            player.setDeltaMovement(motion.x, Math.max(motion.y, lift), motion.z);
-        } else if (motion.y < 0.0D) {
-            // 抵消下沉，实现站立行走
-            player.setDeltaMovement(motion.x, 0.0D, motion.z);
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos,
+                net.minecraft.world.level.block.state.BlockState> entry : cleared.entrySet()) {
+            level.setBlock(entry.getKey(), entry.getValue(), 3);
         }
     }
 
@@ -484,6 +550,7 @@ public final class HeTrueEffects {
 
     private static void removeMods(Player player) {
         applyStrideAbilities(player, false); // 还原被放大的飞行能力值
+        restoreFluids(player); // 还原被蹈水履火清空的水/岩浆
         // 每个 UUID 只属于一条属性，按 1:1 精确移除即可。
         // （原先用一个"6 UUID × 6 属性"的双层循环，实际产生 36 次无意义尝试。）
         removeAttributeModifier(player, Attributes.ATTACK_DAMAGE, DAMAGE_MOD);
@@ -535,35 +602,43 @@ public final class HeTrueEffects {
         }
     }
 
+    /** 木棍被附魔/改名后的显示名称。 */
+    private static final String STICK_DISPLAY = "棍木";
+
     /**
-     * 万法附魔：把玩家「身上穿戴(护甲/主副手) + 背包内」全部可附魔物品，永久写入
-     * 它所能附上的每一种正面附魔（最高等级），并忽略附魔之间的冲突（Sharpness 与
-     * Smite 可同存、Protection 全系同存等）。每 20 tick 幂等刷新一次，对已满级物品
-     * 不重复写入 NBT。
+     * 万法附魔（改写）：<b>只对「木棍」生效</b>，不再改动身上装备与其它背包物品。
+     * <ul>
+     *   <li>把该木棍能附上的每一种<b>正面</b>附魔写入最高等级，并忽略附魔冲突；</li>
+     *   <li>把木棍名称改为 {@value #STICK_DISPLAY}；</li>
+     *   <li>每 20 tick 幂等刷新，已满足的木棍不重复写 NBT。</li>
+     * </ul>
      *
-     * <p>注意：这是"永久写入"（库存物品本体被改），脱下真者祂后附魔仍保留。
-     * 不触碰不可附魔物品（书/食物/方块等 {@code canEnchant} 为 false 的不理）。
+     * <p>注意：原版木棍不属于任何附魔类别（{@code canEnchant} 几乎全为 false），
+     * 若严格按 vanilla 规则则一根附魔都加不上；因此这里对木棍<b>强制</b>写入全部正面附魔
+     * （用 {@code desired.put} 直接落 NBT，绕过兼容性检查），使其成为真正的「棍木」。
+     * 仍是"永久写入"，脱下真者祂后保留。
      */
     private static void applyDivineEnchantments(Player player) {
         java.util.ArrayList<ItemStack> stacks = new java.util.ArrayList<>(player.getInventory().items);
         stacks.addAll(player.getInventory().armor);
         stacks.add(player.getOffhandItem());
         for (ItemStack stack : stacks) {
-            if (stack.isEmpty()) {
-                continue;
+            if (stack.isEmpty() || !stack.is(net.minecraft.world.item.Items.STICK)) {
+                continue; // 只处理木棍
             }
+            // 1) 名称改为「棍木」（幂等：已是该名则不重复写）
+            if (!STICK_DISPLAY.equals(stack.getHoverName().getString())) {
+                stack.setHoverName(net.minecraft.network.chat.Component.literal(STICK_DISPLAY));
+            }
+            // 2) 写入全部正面附魔的最高等级（忽略冲突；木棍无附魔类别，故不做 canEnchant 过滤）
             java.util.Map<Enchantment, Integer> existing = EnchantmentHelper.getEnchantments(stack);
             java.util.Map<Enchantment, Integer> desired = new java.util.HashMap<>(existing);
             for (Enchantment enchantment : net.minecraftforge.registries.ForgeRegistries.ENCHANTMENTS) {
                 if (enchantment == null || enchantment.isCurse()) {
                     continue; // 只加正面附魔（排除诅咒）
                 }
-                if (!enchantment.canEnchant(stack)) {
-                    continue; // 该物品附不上
-                }
                 desired.put(enchantment, enchantment.getMaxLevel());
             }
-            // 仅当确有新增或等级提升时才写 NBT，避免每 tick 重复序列化
             if (!desired.equals(existing)) {
                 EnchantmentHelper.setEnchantments(desired, stack);
             }
@@ -580,13 +655,14 @@ public final class HeTrueEffects {
             return;
         }
         LivingEntity victim = event.getEntity();
-        // 1 太初 / 17 归墟：免疫虚空伤害（原先是从虚空中拉回，现改为直接免疫）
-        if (victim instanceof Player player && wearing(player) && isVoidDamage(event.getSource())) {
-            event.setCanceled(true);
-            return;
-        }
-        // 太初：每个自然秒内自身累计最多受到 1 点伤害，同秒内多余伤害全部无视
+        // ---- 玩家自身防护（1 太初 / 17 归墟 / 18 界缚）----
         if (victim instanceof Player player && wearing(player)) {
+            // 免疫虚空伤害（坐标判定，不依赖伤害类型的 message id）与 /kill
+            if (isInVoid(player) || isVoidDamage(event.getSource()) || isKillDamage(event.getSource())) {
+                event.setCanceled(true);
+                return;
+            }
+            // 太初：每个自然秒内自身累计最多受到 1 点伤害，同秒内多余伤害全部无视
             long second = player.level().getGameTime() / 20L;
             double[] budget = SEC_DAMAGE.get(player.getUUID());
             if (budget == null || budget[0] != second) {
@@ -602,6 +678,10 @@ public final class HeTrueEffects {
                 event.setAmount((float) amount);
                 budget[1] = used + amount;
             }
+            return;
+        }
+        // 试验假人（MmmMmmMmmMmm / Target Dummy）：不施加任何附加伤害，避免被打掉
+        if (isProtectedDummy(victim)) {
             return;
         }
         // 攻击来源解析
@@ -641,6 +721,48 @@ public final class HeTrueEffects {
         }
         String id = source.getMsgId();
         return "outOfWorld".equals(id) || "fellOutOfWorld".equals(id);
+    }
+
+    /**
+     * 1 太初 / 17 归墟：是否处于"虚空"（位于世界底部之下）。
+     * 虚空伤害只可能在此发生，用坐标判定最稳（不依赖伤害类型的 message id，
+     * 也不受其它模组自定义虚空伤害类型影响）。
+     */
+    private static boolean isInVoid(Player player) {
+        return player.getY() < (double) player.level().getMinBuildHeight();
+    }
+
+    /** 18 界缚：是否是 /kill 这类"必杀"伤害（genericKill）。 */
+    private static boolean isKillDamage(net.minecraft.world.damagesource.DamageSource source) {
+        return source != null && "genericKill".equals(source.getMsgId());
+    }
+
+    /**
+     * 是否是应当保护的"试验假人"（MmmMmmMmmMmm / Target Dummy，实体 id 为 {@code mmm:dummy}）。
+     * 该类假人用于显示伤害数字，不应被本模组的高额附加真伤打掉，故跳过全部附加伤害
+     * （只保留原版普通攻击结算，交由假人自身逻辑处理）。按注册名判定，不产生硬依赖。
+     */
+    private static boolean isProtectedDummy(Entity entity) {
+        if (entity == null) {
+            return false;
+        }
+        net.minecraft.resources.ResourceLocation key =
+                net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        return key != null && "mmm".equals(key.getNamespace()) && "dummy".equals(key.getPath());
+    }
+
+    /**
+     * 1 太初 / 17 归墟 / 18 界缚：在 {@code hurt()} 最早阶段拦截"虚空伤害"与"/kill"。
+     * 放在 LivingAttackEvent（比 LivingDamageEvent 更早）可确保任何伤害类型命名下都生效。
+     */
+    private static void onLivingAttack(LivingAttackEvent event) {
+        if (event.getEntity().level().isClientSide) {
+            return;
+        }
+        if (event.getEntity() instanceof Player player && wearing(player)
+                && (isInVoid(player) || isVoidDamage(event.getSource()) || isKillDamage(event.getSource()))) {
+            event.setCanceled(true);
+        }
     }
 
     /** 2 不朽：死亡无效（回满并只清负面） */
@@ -758,13 +880,65 @@ public final class HeTrueEffects {
         event.setAmount(amount * 10);
     }
 
-    /** 18 界缚：禁止一切 /tp 及传送指令影响你 */
+    /**
+     * 18 界缚：<b>只拦"别的玩家用 /tp 把你传送走"</b>。以下情况一律放行：
+     * <ul>
+     *   <li>自己发的传送指令（传自己、传别人、传坐标）；</li>
+     *   <li>真者祂玩家发的传送指令（包含"我传送别人"）；</li>
+     *   <li><b>没有玩家发起者的传送</b> —— 控制台、命令方块、以及其它模组的强制传送。</li>
+     * </ul>
+     *
+     * <p>难点：{@code EntityTeleportEvent.TeleportCommand} 不携带命令来源，无法从事件本身
+     * 区分"我 /tp 自己"与"别人 /tp 我"。因此改为在 {@link CommandEvent} 记录本次指令的
+     * 玩家发起者，再在这里比对。用时间戳（而非 gameTime）做有效性窗口，避免跨维度不同步。
+     */
     private static void onTeleportCommand(EntityTeleportEvent.TeleportCommand event) {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (event.getEntity() instanceof Player player && wearing(player)) {
-            event.setCanceled(true);
+        if (!(event.getEntity() instanceof Player target) || !wearing(target)) {
+            return;
         }
+        if (isForeignPlayerTeleport(target)) {
+            event.setCanceled(true); // 别的玩家想把你传送走：禁止
+        }
+    }
+
+    /** 记录"由玩家执行的指令"的发起者（供传送判定使用）。 */
+    private static void onCommand(net.minecraftforge.event.CommandEvent event) {
+        try {
+            if (event.getParseResults().getContext().getSource().getEntity() instanceof Player player) {
+                lastCommandIssuer = player.getUUID();
+                lastCommandIssuerMillis = System.currentTimeMillis();
+            } else {
+                lastCommandIssuer = null;
+                lastCommandIssuerMillis = 0L;
+            }
+        } catch (Throwable t) {
+            lastCommandIssuer = null;
+            lastCommandIssuerMillis = 0L;
+        }
+    }
+
+    /**
+     * 是否需要拦截本次传送：<b>仅当</b>"由别的玩家执行的指令"把真者祂玩家当作目标时才拦。
+     * 指令是同步执行的，所以用很短的窗口（{@value #COMMAND_ISSUER_WINDOW_MS} ms）判定
+     * "本次传送是否由刚才那条指令触发"；窗口外（含其它模组的强制传送）一律放行。
+     */
+    private static boolean isForeignPlayerTeleport(Player target) {
+        if (lastCommandIssuer == null) {
+            return false; // 无玩家发起者：控制台 / 命令方块 / 其它模组 → 放行
+        }
+        if (System.currentTimeMillis() - lastCommandIssuerMillis > COMMAND_ISSUER_WINDOW_MS) {
+            return false; // 与本次传送无关（不是刚执行的指令触发的）→ 放行
+        }
+        if (lastCommandIssuer.equals(target.getUUID())) {
+            return false; // 自己 /tp 自己（含坐标）→ 放行
+        }
+        Player issuer = target.level().getPlayerByUUID(lastCommandIssuer);
+        if (issuer != null && wearing(issuer)) {
+            return false; // 真者祂玩家传送别人 → 放行
+        }
+        return true; // 别的玩家 /tp 你 → 拦截
     }
 }

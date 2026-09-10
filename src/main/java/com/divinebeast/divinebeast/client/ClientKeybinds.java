@@ -29,6 +29,10 @@ public final class ClientKeybinds {
     private static final KeyMapping TOGGLE_AURA = new KeyMapping(
             "key.divinebeast.toggle_aura", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
 
+    /** V 键：真者祂「10 光之领域」范围伤害开关 */
+    private static final KeyMapping TOGGLE_BEACON = new KeyMapping(
+            "key.divinebeast.toggle_beacon", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY);
+
     private ClientKeybinds() {
     }
 
@@ -41,6 +45,7 @@ public final class ClientKeybinds {
         event.register(TOGGLE_RESPAWN);
         event.register(TOGGLE_SPEED);
         event.register(TOGGLE_AURA);
+        event.register(TOGGLE_BEACON);
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -55,6 +60,9 @@ public final class ClientKeybinds {
         }
         while (TOGGLE_AURA.consumeClick()) {
             OrbitAuraClient.toggle();
+        }
+        while (TOGGLE_BEACON.consumeClick()) {
+            Networking.sendToServer(new com.divinebeast.divinebeast.net.ToggleBeaconMessage());
         }
     }
 }
