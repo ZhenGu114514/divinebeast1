@@ -442,6 +442,95 @@
 			x: -2.0d
 			y: 0.0d
 		}
+		,{
+			description: [
+				"{\"translate\":\"divinebeast.ftb.warn.intro\"}"
+				"{\"translate\":\"divinebeast.ftb.warn.reason\"}"
+				"{\"translate\":\"divinebeast.ftb.warn.fix\"}"
+			]
+			id: "1D1CEA57E0002100"
+			optional: true
+			shape: "diamond"
+			size: 2.0d
+			title: "{\"translate\":\"divinebeast.ftb.warn.task\"}"
+			x: -2.0d
+			y: 2.0d
+		}
+		,{
+			dependencies: ["1D1CEA57E0001900"]
+			description: [
+				"{\"translate\":\"divinebeast.ftb.repeat.gate\"}"
+				"{\"translate\":\"divinebeast.ftb.repeat.dragon.desc\"}"
+			]
+			id: "1D1CEA57E0002200"
+			optional: true
+			repeatable: true
+			rewards: [{
+				command: "/kill @e[type=minecraft:ender_dragon]"
+				id: "1D1CEA57E0002202"
+				player_command: false
+				type: "command"
+			}]
+			tasks: [{
+				consume_items: true
+				id: "1D1CEA57E0002201"
+				item: "minecraft:emerald"
+				type: "item"
+			}]
+			title: "{\"translate\":\"divinebeast.ftb.repeat.dragon\"}"
+			x: -2.0d
+			y: 4.0d
+		}
+		,{
+			dependencies: ["1D1CEA57E0001900"]
+			description: [
+				"{\"translate\":\"divinebeast.ftb.repeat.gate\"}"
+				"{\"translate\":\"divinebeast.ftb.repeat.egg.desc\"}"
+			]
+			id: "1D1CEA57E0002300"
+			optional: true
+			repeatable: true
+			rewards: [{
+				count: 1
+				id: "1D1CEA57E0002302"
+				item: "minecraft:dragon_egg"
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: true
+				id: "1D1CEA57E0002301"
+				item: "minecraft:emerald"
+				type: "item"
+			}]
+			title: "{\"translate\":\"divinebeast.ftb.repeat.egg\"}"
+			x: -2.0d
+			y: 6.0d
+		}
+		,{
+			dependencies: ["1D1CEA57E0001900"]
+			description: [
+				"{\"translate\":\"divinebeast.ftb.repeat.gate\"}"
+				"{\"translate\":\"divinebeast.ftb.repeat.star.desc\"}"
+			]
+			id: "1D1CEA57E0002400"
+			optional: true
+			repeatable: true
+			rewards: [{
+				count: 1
+				id: "1D1CEA57E0002402"
+				item: "minecraft:nether_star"
+				type: "item"
+			}]
+			tasks: [{
+				consume_items: true
+				id: "1D1CEA57E0002401"
+				item: "minecraft:emerald"
+				type: "item"
+			}]
+			title: "{\"translate\":\"divinebeast.ftb.repeat.star\"}"
+			x: -2.0d
+			y: 8.0d
+		}
 	]
 	title: "{\"translate\":\"divinebeast.ftb.chapter\"}"
 }
