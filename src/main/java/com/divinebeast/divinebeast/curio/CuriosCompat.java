@@ -156,13 +156,54 @@ public final class CuriosCompat {
     private static void onAttachCapabilities(AttachCapabilitiesEvent<ItemStack> event) {
         ItemStack stack = event.getObject();
         Item item = stack.getItem();
-        if (item != ModItems.DEITY.get() && item != ModItems.BEAST.get()
-                && item != ModItems.HE_FIRST.get() && item != ModItems.HE_EXTREME.get()
-                && item != ModItems.REDEMPTION.get() && item != ModItems.TRUE_HEART.get()
-                && item != ModItems.HE_TRUE.get()) {
+        if (item == ModItems.DEITY.get() || item == ModItems.BEAST.get()
+                || item == ModItems.HE_FIRST.get() || item == ModItems.HE_EXTREME.get()
+                || item == ModItems.REDEMPTION.get() || item == ModItems.TRUE_HEART.get()
+                || item == ModItems.HE_TRUE.get()) {
+            // 绑定核心饰品：需要槽位解锁 + 绑定诅咒
+            event.addCapability(CuriosCapability.ID_ITEM,
+                    CuriosApi.createCurioProvider(new SlotUnlockCurio(stack)));
             return;
         }
-        event.addCapability(CuriosCapability.ID_ITEM, CuriosApi.createCurioProvider(new SlotUnlockCurio(stack)));
+        // 其余本模组饰品（时刻 / 法则 / 证悟碎片 / 懦弱的抉择 …）：
+        // 统一挂一个"平凡"的 ICurio，让第三方模组查询 CuriosApi.getCurio(stack) 时
+        // 拿得到实体而不是空 Optional —— 否则会出现"某个饰品相关模组遍历已装备饰品时
+        // 解包空 Optional 直接 NPE"的崩溃（打开饰品栏时崩在别人代码里，很难定位）。
+        if (isDivineBeastTrinket(item)) {
+            event.addCapability(CuriosCapability.ID_ITEM,
+                    CuriosApi.createCurioProvider(new PlainCurio(stack)));
+        }
+    }
+
+    /** 是否是本模组注册的任何一件饰品 */
+    private static boolean isDivineBeastTrinket(Item item) {
+        for (net.minecraftforge.registries.RegistryObject<Item> holder : ModItems.ALL_ITEMS) {
+            if (holder.get() == item) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 普通 Curio 实现：只提供 {@link ICurio#getStack()}，其余全部使用接口默认值
+     * （可装备 / 可卸下 / 无属性修饰符 / 无同步）。
+     *
+     * <p>它不改变本模组自身的任何行为（本模组的属性与效果走服务端事件，不经由 ICurio），
+     * 只是让本模组的饰品在 Curios API 看来是一个"合法的饰品"。
+     */
+    private static final class PlainCurio implements ICurio {
+
+        private final ItemStack stack;
+
+        private PlainCurio(ItemStack stack) {
+            this.stack = stack;
+        }
+
+        @Override
+        public ItemStack getStack() {
+            return stack;
+        }
     }
 
     /**
