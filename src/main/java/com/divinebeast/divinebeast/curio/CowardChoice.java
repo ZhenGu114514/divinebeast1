@@ -98,7 +98,10 @@ public final class CowardChoice {
     // ------------------------------------------------------------------
 
     private static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (!(event.getEntity() instanceof Player player) || player.level().isClientSide) {
+        // 注意：PlayerLoggedInEvent#getEntity() 的返回类型本身就是 Player，
+        // 这里不能再写 `instanceof Player player`（Java 17 会报"模式无条件"编译错误）。
+        Player player = event.getEntity();
+        if (player == null || player.level().isClientSide) {
             return;
         }
         // 只在"第一次进入这个世界"时发放一次：标记写下后，丢失/销毁/重登都不再补发。
