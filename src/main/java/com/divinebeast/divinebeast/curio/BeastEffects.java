@@ -167,6 +167,10 @@ public final class BeastEffects {
      * 伤害被强制固定为 1 点、治疗反噬、致死后原地半血等）。
      */
     private static boolean curseActive(LivingEntity entity, int index) {
+        // 懦弱的抉择：装备期间无效『兽』系全部诅咒负面
+        if (CowardChoice.wearing(entity)) {
+            return false;
+        }
         if (isHeTrueActive(entity)) {
             return false;
         }

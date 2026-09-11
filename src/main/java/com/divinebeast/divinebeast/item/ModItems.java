@@ -115,6 +115,13 @@ public final class ModItems {
             ITEMS.register("he_true", () -> new DivineBeastItem(DivineBeastItem.curioProperties()));    // 真者祂
 
     // ------------------------------------------------------------------
+    // 懦弱的抉择（安全饰品，装备在 Curios 通用 curio 槽）
+    // ------------------------------------------------------------------
+    /** 懦弱的抉择：进入世界即自动获得并装备，装备期间无效『祂』与『兽』的一切诅咒负面 */
+    public static final RegistryObject<Item> COWARD_CHOICE =
+            ITEMS.register("coward_choice", () -> new DivineBeastItem(DivineBeastItem.curioProperties()));
+
+    // ------------------------------------------------------------------
     // 全部物品（用于创造模式标签等）
     // ------------------------------------------------------------------
     /** 祂系「时刻」饰品（顺序与槽位/效果索引一一对应：nonexist_nonexist…impossible_nonexist） */
@@ -126,7 +133,8 @@ public final class ModItems {
             NONEXIST_NONEXIST, NONEXIST_EXIST, MAYBE_EXIST, EXIST_EXIST, IMPOSSIBLE_NONEXIST,
             SUPREME, WISDOM, LIFE, CHAOS, SELF, DEVOUR, SAMSARA,
             HE_FIRST, PERCEPTION, CONSCIOUSNESS, REBELLION, REDEMPTION, HE_EXTREME, GRIEF, PAIN, TRUE_HEART,
-            HE_TRUE);
+            HE_TRUE,
+            COWARD_CHOICE);
 
     public static final RegistryObject<CreativeModeTab> TAB =
             TABS.register("divinebeast_tab", () -> CreativeModeTab.builder()

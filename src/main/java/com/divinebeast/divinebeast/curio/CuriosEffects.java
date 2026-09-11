@@ -168,6 +168,10 @@ public final class CuriosEffects {
      * 工具耐久锁 1、生命上限被锁到 2 等）。
      */
     private static boolean curseActive(LivingEntity entity, int curseIndex) {
+        // 懦弱的抉择：装备期间无效『祂』系全部诅咒负面
+        if (CowardChoice.wearing(entity)) {
+            return false;
+        }
         if (phaseTwo(entity)) {
             return false;
         }

@@ -55,6 +55,25 @@
 		}
 		,{
 			description: [
+				"{\"translate\":\"divinebeast.ftb.coward.intro\"}"
+				"{\"translate\":\"divinebeast.ftb.coward.obtain\"}"
+				"{\"translate\":\"divinebeast.ftb.coward.effect\"}"
+				"{\"translate\":\"divinebeast.ftb.coward.note\"}"
+			]
+			icon: {
+				Count: 1
+				id: "divinebeast:coward_choice"
+			}
+			id: "1D1CEA57E0002500"
+			optional: true
+			shape: "square"
+			size: 1.5d
+			title: "{\"translate\":\"item.divinebeast.coward_choice\"}"
+			x: 6.0d
+			y: 0.0d
+		}
+		,{
+			description: [
 				"{\"translate\":\"divinebeast.ftb.effect.nonexist_nonexist\"}"
 				"{\"translate\":\"item.divinebeast.nonexist_nonexist.lore\"}"
 				"{\"translate\":\"divinebeast.ftb.obtain.nonexist_nonexist\"}"

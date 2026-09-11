@@ -72,6 +72,8 @@ public class DivineBeastMod {
             BeastEffects.register();
             AscensionEffects.register();
             HeTrueEffects.register();
+            // 懦弱的抉择：进入世界自动发放并装进通用 curio 槽（装备期间无效一切诅咒负面）
+            com.divinebeast.divinebeast.curio.CowardChoice.register();
             // 碎片门槛：感知/意识/反叛 需已装备『祂者初』
             FirstChestReward.setFragmentGate(AscensionEffects::wearingHeFirst);
             // 证悟抉择界面仅客户端显示

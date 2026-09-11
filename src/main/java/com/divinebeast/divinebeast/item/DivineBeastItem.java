@@ -204,6 +204,9 @@ public class DivineBeastItem extends Item {
         } else if (stack.is(ModItems.TRUE_HEART.get())) {
             tooltip.add(Component.translatable("item.divinebeast.true_heart.lore")
                     .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        } else if (stack.is(ModItems.COWARD_CHOICE.get())) {
+            tooltip.add(Component.translatable("item.divinebeast.coward_choice.lore")
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
         // 效果描述：非核心物品始终显示；核心物品由 CuriosCompat 按阶段动态显示
         //（无 Curios 时用通用描述兜底，避免诅咒阶段剧透后续阶段效果）
