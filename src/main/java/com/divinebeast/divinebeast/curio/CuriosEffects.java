@@ -544,19 +544,29 @@ public final class CuriosEffects {
         }
 
         if (phaseTwo(attacker)) {
-            if (CuriosEffectsState.hasRedemptionMark(victim)) {
+            if (CuriosEffectsState.hasRedemptionMark(victim) && !isBossMob(victim)) {
                 // 常驻（不受 C 键影响）：对带救赎印记生物 → 无视护甲/免伤真伤
+                // BOSS 例外：它们的 hurt 覆写不接受无来源的真伤，取消普通伤害会让它们彻底打不动
                 event.setCanceled(true);
+                float before = victim.getHealth() + victim.getAbsorptionAmount();
                 applyingTrueDamage = true;
                 try {
                     victim.hurt(victim.damageSources().genericKill(), event.getAmount());
                 } finally {
                     applyingTrueDamage = false;
                 }
+                // 兜底：真伤一段都没打出来（目标的 hurt 覆写不接受"无实体来源"的伤害类型，
+                // 例如其它模组的 BOSS）→ 退回一段玩家攻击伤害。
+                // 这里绝不能出现"普通伤害已被取消、替换的真伤又无效"= 目标完全无敌的情况。
+                if (victim.isAlive()
+                        && victim.getHealth() + victim.getAbsorptionAmount() >= before) {
+                    victim.hurt(victim.damageSources().playerAttack(attacker), event.getAmount());
+                }
                 return;
             }
             // 未带印记：仅当「救赎之击」开启（C 键）时改为回满血；关闭则正常造成伤害
-            if (CuriosEffectsState.respawnToggle(attacker)) {
+            // BOSS 例外：把 BOSS 治满血等于让它无敌，故不适用
+            if (!isBossMob(victim) && CuriosEffectsState.respawnToggle(attacker)) {
                 event.setCanceled(true);
                 victim.setHealth(victim.getMaxHealth());
             }
@@ -595,10 +605,15 @@ public final class CuriosEffects {
         if (phaseTwo(player)) {
             Entity direct = source.getEntity();
             if (direct instanceof Mob mob) {
-                mob.removeAllEffects();
-                setMaxHealth(mob, 100.0D, MOB_HEALTH_100);
-                mob.setHealth(mob.getMaxHealth());
-                CuriosEffectsState.setRedemptionMark(mob, true);
+                if (isBossMob(mob)) {
+                    // BOSS 不打印记、不锁血、不回满血；并顺手清掉旧存档里被误加的印记
+                    clearBossMark(mob);
+                } else {
+                    mob.removeAllEffects();
+                    setMaxHealth(mob, 100.0D, MOB_HEALTH_100);
+                    mob.setHealth(mob.getMaxHealth());
+                    CuriosEffectsState.setRedemptionMark(mob, true);
+                }
             }
         }
     }
@@ -696,6 +711,35 @@ public final class CuriosEffects {
         if (Math.abs(delta) > 0.001D) {
             instance.addPermanentModifier(new AttributeModifier(uuid, "divinebeast_salvation", delta,
                     AttributeModifier.Operation.ADDITION));
+        }
+    }
+
+    /**
+     * 是否是"进程型 BOSS"（末影龙 / 凋灵）。
+     *
+     * <p>救赎印记那一整套流程（{@code removeAllEffects} + 生命上限锁 100 + 回满血 +
+     * 之后普通伤害全部改走 {@code generic_kill} 真伤）对它们是<b>毁灭性</b>的：
+     * <ul>
+     *   <li>BOSS 会主动攻击玩家 → 每次命中都触发"回满血"，
+     *       等于把 BOSS 变成永远满血的沙包（实测："装备真者祂后无法攻击末影龙"）；</li>
+     *   <li>打上印记后普通伤害被 {@code event.setCanceled(true)} 取消、只走无实体的
+     *       {@code generic_kill} 伤害，而 BOSS 的 {@code hurt} 覆写不接受这种来源 → 完全打不动；</li>
+     *   <li>末影龙的最大生命会被锁成 100，BOSS 血条显示异常。</li>
+     * </ul>
+     * 因此对 BOSS 一律跳过印记流程，让其按原版普通伤害结算
+     * （与 {@code BeastEffects} 里"对末影龙等 BOSS 走普通伤害"的处理保持一致）。
+     */
+    private static boolean isBossMob(LivingEntity entity) {
+        return entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
+                || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss;
+    }
+
+    /** 清掉 BOSS 身上被误加的救赎印记与"生命上限锁 100"修饰符（修复旧存档里已被打上印记的龙/凋灵） */
+    private static void clearBossMark(LivingEntity entity) {
+        CuriosEffectsState.setRedemptionMark(entity, false);
+        AttributeInstance instance = entity.getAttribute(Attributes.MAX_HEALTH);
+        if (instance != null) {
+            instance.removeModifier(MOB_HEALTH_100);
         }
     }
 

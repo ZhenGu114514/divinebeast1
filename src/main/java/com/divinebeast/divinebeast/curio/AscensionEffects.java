@@ -129,6 +129,19 @@ public final class AscensionEffects {
         return wearingRedemption(player) || wearingTrueHeart(player);
     }
 
+    /**
+     * 真者『祂』（终形态）是否正在生效。
+     *
+     * <p>用于让<b>低阶形态的限制给终形态让位</b>：祂者初 / 祂者极 是"冒险·不存在式"阶段，
+     * 会禁伤、禁破坏方块、禁一切 /tp。这些限制在戴上真者祂后若仍然生效，终形态的核心权能
+     * （攻击力 +1 億、挖掘掉落 ×10、18 界缚自定义传送权限）会被整体废掉 ——
+     * 实测症状就是「装备真者祂后打不动末影龙」：伤害在 {@code LivingAttackEvent} 里
+     * 被祂者初直接取消了。
+     */
+    private static boolean heTrueActive(Player player) {
+        return wearingHeTrue(player) && !effectsDisabled(player);
+    }
+
     // ==================================================================
     // 每 tick：隐身 + 祂者极光柱 + 虚空保护
     // ==================================================================
@@ -198,7 +211,9 @@ public final class AscensionEffects {
             attacker = player;
         }
         // 只有『祂者初』禁伤（冒险/不存在式）；『祂者极』可正常造成伤害（光柱之外也可攻击）
+        // 真者祂生效时不再禁伤：终形态必须能打出伤害（否则连末影龙都打不动）
         if (attacker != null && !effectsDisabled(attacker)
+                && !heTrueActive(attacker)
                 && wearingHeFirst(attacker)
                 && !event.getEntity().is(attacker)) {
             event.setCanceled(true);
@@ -215,7 +230,7 @@ public final class AscensionEffects {
                 && projectile.getOwner() instanceof Player player2) {
             attacker = player2;
         }
-        if (attacker == null || effectsDisabled(attacker)) {
+        if (attacker == null || effectsDisabled(attacker) || heTrueActive(attacker)) {
             return false;
         }
         return wearingHeFirst(attacker);
@@ -239,22 +254,24 @@ public final class AscensionEffects {
         }
     }
 
-    /** 冒险式：不可破坏方块 */
+    /** 冒险式：不可破坏方块（真者祂生效时让位，否则"挖掘掉落 ×10"永远触发不了） */
     private static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         Player player = event.getEntity();
         if (!player.level().isClientSide && !effectsDisabled(player)
+                && !heTrueActive(player)
                 && (wearingHeFirst(player) || wearingHeExtreme(player))) {
             event.setCanceled(true);
         }
     }
 
-    /** 禁 /tp 涉及你 */
+    /** 禁 /tp 涉及你（真者祂生效时让位，交给 18 界缚 的精细规则处理） */
     private static void onTeleportCommand(EntityTeleportEvent.TeleportCommand event) {
         if (event.getEntity().level().isClientSide) {
             return;
         }
         if (event.getEntity() instanceof Player player
                 && !effectsDisabled(player)
+                && !heTrueActive(player)
                 && (wearingHeFirst(player) || wearingHeExtreme(player))) {
             event.setCanceled(true);
         }

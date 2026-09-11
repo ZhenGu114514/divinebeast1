@@ -261,8 +261,10 @@ public final class HeTrueEffects {
             for (LivingEntity mob : player.level().getEntitiesOfClass(LivingEntity.class,
                     AABB.ofSize(player.position(), BEACON_RADIUS * 2, BEACON_RADIUS * 2, BEACON_RADIUS * 2))) {
                 // 敌对单位（Monster 与 末影龙等 Enemy 生物，末影龙不是 Monster）
+                // BOSS（末影龙 / 凋灵）除外：本领域每秒 50+等级 的伤害会在几秒内把 BOSS 自动打死，
+                // 玩家还没出手 BOSS 就没了（也不需要玩家参与）。BOSS 一律交给手动攻击结算。
                 if (mob instanceof net.minecraft.world.entity.monster.Enemy
-                        && mob.isAlive() && !mob.is(player)) {
+                        && mob.isAlive() && !mob.is(player) && !isBossMob(mob)) {
                     mob.hurt(mob.damageSources().playerAttack(player), beaconDmg);
                 }
             }
@@ -676,6 +678,15 @@ public final class HeTrueEffects {
         if (!CuriosEffectsState.htrueBeaconToggle(attacker)) {
             return;
         }
+        // BOSS（末影龙 / 凋灵）：附加的 generic_kill / fell_out_of_world 这两段打不出来
+        // —— 它们的 hurt 覆写不接受这种"无实体来源"的伤害类型（实测末影龙完全免疫），
+        // 而前面已经 setAmount 的普通伤害是有效的。故改为把两段等值伤害直接折进普通伤害：
+        // 总倍率同样是 3 倍（1 倍普通 + 等值真伤 + 等值虚空伤害），且确实打得出来。
+        // 与 BeastEffects 里"对末影龙等 BOSS 走普通伤害结算"的处理保持一致。
+        if (isBossMob(victim)) {
+            event.setAmount(amount * 3.0F);
+            return;
+        }
         applyingTrueDamage = true;
         try {
             victim.hurt(victim.damageSources().genericKill(), amount);
@@ -706,6 +717,18 @@ public final class HeTrueEffects {
     /** 18 界缚：是否是 /kill 这类"必杀"伤害（genericKill）。 */
     private static boolean isKillDamage(net.minecraft.world.damagesource.DamageSource source) {
         return source != null && "genericKill".equals(source.getMsgId());
+    }
+
+    /**
+     * 是否是"进程型 BOSS"（末影龙 / 凋灵）。
+     *
+     * <p>用途：这两者的 {@code hurt} 覆写不接受无实体来源的伤害类型
+     * （{@code generic_kill} / {@code fell_out_of_world}），附加真伤对它们完全无效，
+     * 因此"天罚 + 归墟"必须折进普通伤害里才会在 BOSS 身上生效。
+     */
+    private static boolean isBossMob(LivingEntity entity) {
+        return entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
+                || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss;
     }
 
     /**
