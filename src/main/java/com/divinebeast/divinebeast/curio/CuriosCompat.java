@@ -156,54 +156,13 @@ public final class CuriosCompat {
     private static void onAttachCapabilities(AttachCapabilitiesEvent<ItemStack> event) {
         ItemStack stack = event.getObject();
         Item item = stack.getItem();
-        if (item == ModItems.DEITY.get() || item == ModItems.BEAST.get()
-                || item == ModItems.HE_FIRST.get() || item == ModItems.HE_EXTREME.get()
-                || item == ModItems.REDEMPTION.get() || item == ModItems.TRUE_HEART.get()
-                || item == ModItems.HE_TRUE.get()) {
-            // 绑定核心饰品：需要槽位解锁 + 绑定诅咒
-            event.addCapability(CuriosCapability.ID_ITEM,
-                    CuriosApi.createCurioProvider(new SlotUnlockCurio(stack)));
+        if (item != ModItems.DEITY.get() && item != ModItems.BEAST.get()
+                && item != ModItems.HE_FIRST.get() && item != ModItems.HE_EXTREME.get()
+                && item != ModItems.REDEMPTION.get() && item != ModItems.TRUE_HEART.get()
+                && item != ModItems.HE_TRUE.get()) {
             return;
         }
-        // 其余本模组饰品（时刻 / 法则 / 证悟碎片 / 懦弱的抉择 …）：
-        // 统一挂一个"平凡"的 ICurio，让第三方模组查询 CuriosApi.getCurio(stack) 时
-        // 拿得到实体而不是空 Optional —— 否则会出现"某个饰品相关模组遍历已装备饰品时
-        // 解包空 Optional 直接 NPE"的崩溃（打开饰品栏时崩在别人代码里，很难定位）。
-        if (isDivineBeastTrinket(item)) {
-            event.addCapability(CuriosCapability.ID_ITEM,
-                    CuriosApi.createCurioProvider(new PlainCurio(stack)));
-        }
-    }
-
-    /** 是否是本模组注册的任何一件饰品 */
-    private static boolean isDivineBeastTrinket(Item item) {
-        for (net.minecraftforge.registries.RegistryObject<Item> holder : ModItems.ALL_ITEMS) {
-            if (holder.get() == item) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 普通 Curio 实现：只提供 {@link ICurio#getStack()}，其余全部使用接口默认值
-     * （可装备 / 可卸下 / 无属性修饰符 / 无同步）。
-     *
-     * <p>它不改变本模组自身的任何行为（本模组的属性与效果走服务端事件，不经由 ICurio），
-     * 只是让本模组的饰品在 Curios API 看来是一个"合法的饰品"。
-     */
-    private static final class PlainCurio implements ICurio {
-
-        private final ItemStack stack;
-
-        private PlainCurio(ItemStack stack) {
-            this.stack = stack;
-        }
-
-        @Override
-        public ItemStack getStack() {
-            return stack;
-        }
+        event.addCapability(CuriosCapability.ID_ITEM, CuriosApi.createCurioProvider(new SlotUnlockCurio(stack)));
     }
 
     /**
@@ -228,15 +187,15 @@ public final class CuriosCompat {
         public boolean canUnequip(SlotContext slotContext) {
             // 绑定诅咒：『祂』『兽』以及证悟链（祂者初/祂者极/救赎/本心/真者祂）
             // 一经佩戴无法从饰品栏卸下。
-            // 例外：创造模式（含旁观）—— 方便创造模式下随时取下调整/测试；
-            // 生存模式仍然是"绑死"，保持原设计要求。
-            return isCreativeWearer(slotContext);
-        }
-
-        /** 佩戴者是否处于创造 / 旁观模式（这两种模式下允许卸下带绑定诅咒的饰品） */
-        private static boolean isCreativeWearer(SlotContext slotContext) {
-            return slotContext.entity() instanceof Player player
-                    && (player.isCreative() || player.isSpectator());
+            //
+            // ⚠ 已回退（1.6.85 曾短暂开放"创造模式可卸下"，导致崩溃）：
+            // 本模组的槽位是"佩戴核心饰品时动态 +1、卸下即收回"的。在**饰品栏界面开着**
+            // 的时候卸下真者祂，会同时把 he_true 槽收回 → 界面（以及 JEI 缓存的界面区域数据）
+            // 拿到过期的槽位布局 → 崩在 JEI 的界面区域计算里
+            // （crash: mezz.jei.gui.events.GuiEventHandler.onDrawBackgroundPost）。
+            // 该路径在开放卸下之前根本走不到，因此恢复"一律不可卸下"即可消除崩溃。
+            // 若日后确实需要创造模式下可卸下，必须改为"界面关闭后再回收槽位"或走服务端指令。
+            return false;
         }
 
         @Override

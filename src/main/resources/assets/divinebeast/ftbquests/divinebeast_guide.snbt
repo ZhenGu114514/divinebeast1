@@ -463,6 +463,25 @@
 		}
 		,{
 			description: [
+				"{\"translate\":\"divinebeast.ftb.hetrue_lock.intro\"}"
+				"{\"translate\":\"divinebeast.ftb.hetrue_lock.prepare\"}"
+				"{\"translate\":\"divinebeast.ftb.hetrue_lock.reason\"}"
+				"{\"translate\":\"divinebeast.ftb.hetrue_lock.advice\"}"
+			]
+			icon: {
+				Count: 1
+				id: "divinebeast:he_true"
+			}
+			id: "1D1CEA57E0002600"
+			optional: true
+			shape: "diamond"
+			size: 2.0d
+			title: "{\"translate\":\"divinebeast.ftb.hetrue_lock.task\"}"
+			x: -2.0d
+			y: -2.0d
+		}
+		,{
+			description: [
 				"{\"translate\":\"divinebeast.ftb.warn.intro\"}"
 				"{\"translate\":\"divinebeast.ftb.warn.reason\"}"
 				"{\"translate\":\"divinebeast.ftb.warn.fix\"}"
