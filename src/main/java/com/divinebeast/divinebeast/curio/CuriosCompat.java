@@ -185,8 +185,17 @@ public final class CuriosCompat {
 
         @Override
         public boolean canUnequip(SlotContext slotContext) {
-            // 绑定诅咒：『祂』『兽』一经佩戴无法从饰品栏卸下
-            return false;
+            // 绑定诅咒：『祂』『兽』以及证悟链（祂者初/祂者极/救赎/本心/真者祂）
+            // 一经佩戴无法从饰品栏卸下。
+            // 例外：创造模式（含旁观）—— 方便创造模式下随时取下调整/测试；
+            // 生存模式仍然是"绑死"，保持原设计要求。
+            return isCreativeWearer(slotContext);
+        }
+
+        /** 佩戴者是否处于创造 / 旁观模式（这两种模式下允许卸下带绑定诅咒的饰品） */
+        private static boolean isCreativeWearer(SlotContext slotContext) {
+            return slotContext.entity() instanceof Player player
+                    && (player.isCreative() || player.isSpectator());
         }
 
         @Override
