@@ -11,7 +11,6 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotResult;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 
@@ -21,9 +20,13 @@ import java.util.Optional;
  * 懦弱的抉择 —— "你可能还未准备好"的安全饰品。
  *
  * <p><b>获得方式</b>：<b>只在第一次进入这个世界时发放一次</b>——标记写下之后，无论之后是丢失、
- * 被烧掉、被丢进箱子还是重新登录，都不会再补发。发放时自动装进 Curios <b>原本就有的</b>
- * 通用 {@code curio} 槽（<b>不额外增加任何饰品栏</b>）；玩家可以随后自行把它取下来放回背包，
+ * 被烧掉、被丢进箱子还是重新登录，都不会再补发。发放时优先装进 Curios 的通用 {@code curio} 槽
+ * （<b>不额外增加任何饰品栏</b>）；玩家可以随后自行取下或<b>挪到任意饰品栏</b>，
  * 那时诅咒会恢复生效（{@link #wearing} 只看是否真装着）。
+ *
+ * <p><b>放置位置</b>：物品标签已加入 Curios 的全部内置槽位与<b>本模组自有的所有槽位</b>
+ * （见 {@code data/curios/tags/items/*.json}），因此戒指 / 项链 / 护符 / 通用栏……
+ * <b>放进任意一格都生效</b>。
  *
  * <p><b>效果</b>：装备期间无效『祂』诅咒与『兽』诅咒的全部负面
  * （见 {@link CuriosEffects#curseActive} 与 {@code BeastEffects#curseActive} 中的短路）。
@@ -39,7 +42,7 @@ public final class CowardChoice {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
-    /** 目标槽位：Curios 内置的通用饰品槽（沿用玩家已有的那一格，不新增） */
+    /** 自动装备的首选槽位：Curios 内置的通用饰品槽（沿用玩家已有的那一格，不新增） */
     private static final String SLOT_ID = "curio";
     /**
      * 是否已经"成功自动装备过一次"。置位后不再自动装回，
@@ -59,11 +62,15 @@ public final class CowardChoice {
     public static void register() {
         MinecraftForge.EVENT_BUS.addListener(CowardChoice::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(CowardChoice::onPlayerTick);
-        LOGGER.info("[divinebeast] 懦弱的抉择：进入世界自动发放并装备到已有的通用 curio 槽。");
+        LOGGER.info("[divinebeast] 懦弱的抉择：进入世界自动发放（优先放入通用 curio 槽，可挪到任意饰品栏）。");
     }
 
     /**
-     * 该生物是否正装备着「懦弱的抉择」（通用 {@code curio} 槽内）。
+     * 该生物是否正装备着「懦弱的抉择」—— <b>任意饰品栏都算</b>。
+     *
+     * <p>用 {@code findCurios(Item)} 扫描玩家身上<b>全部</b> Curios 槽位（不再只看通用
+     * {@code curio} 槽），因此把它放进戒指 / 项链 / 护符 …… 任何一格，效果都照常生效
+     * （物品标签也已加入各槽位，所以物理上也放得进去）。
      *
      * <p>被 {@link CuriosEffects#curseActive} 与 {@code BeastEffects#curseActive} 调用，
      * 用于短路掉『祂』与『兽』的一切诅咒负面。
@@ -76,13 +83,8 @@ public final class CowardChoice {
         if (optional.isEmpty()) {
             return false;
         }
-        for (SlotResult result : optional.get().findCurios(SLOT_ID)) {
-            ItemStack stack = result.stack();
-            if (!stack.isEmpty() && stack.is(ModItems.COWARD_CHOICE.get())) {
-                return true;
-            }
-        }
-        return false;
+        // 扫描全部 Curios 槽位（不再只看通用 curio 槽）→ 放进任意饰品栏都生效
+        return !optional.get().findCurios(ModItems.COWARD_CHOICE.get()).isEmpty();
     }
 
     // ------------------------------------------------------------------

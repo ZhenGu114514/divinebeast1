@@ -390,7 +390,7 @@
   "divinebeast.ftb.coward.intro": "Coward's Choice — you may not be ready yet.",
   "divinebeast.ftb.coward.obtain": "How to get it: granted automatically the first time you enter the world and equipped straight into Curios' generic trinket slot. It is given once per save — if you lose or destroy it, or simply log back in, it will not be handed out again.",
   "divinebeast.ftb.coward.effect": "Effect: while equipped, every negative effect of the Divine's curse and the Beast's curse is nullified (XP zeroed, your attacks healing the target instead, tool durability locked at 1, max health locked, 50% misses, damage fixed at 1 point, healing backlash ... all disabled).",
-  "divinebeast.ftb.coward.note": "Note: it only works while EQUIPPED — take it out of the generic slot and the curses come back immediately; drop it entirely if you want to be rid of it for good (it will not be given again).",
+  "divinebeast.ftb.coward.note": "Any slot works: it has been added to every trinket slot's item tag — ring, necklace, charm, generic slot ... it takes effect wherever you put it. It only works while EQUIPPED — take it off and the curses come back immediately; drop it entirely if you want to be rid of it for good (it will not be given again).",
   "divinebeast.ftb.effect.deity": "While worn you bear 5 Moment curses; equipping each Moment lifts one. With all five you enter Redemption: creative flight, immunity and cleansing.",
   "divinebeast.ftb.effect.beast": "While worn you bear 7 Law curses; equipping each Law lifts one. With all seven you become the Self: master of the cycle.",
   "divinebeast.ftb.effect.nonexist_nonexist": "Max HP, XP, tool durability and armor never drop.",

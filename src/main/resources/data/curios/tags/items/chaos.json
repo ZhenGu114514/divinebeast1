@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "divinebeast:chaos"
+    "divinebeast:chaos",
+    "divinebeast:coward_choice"
   ]
 }

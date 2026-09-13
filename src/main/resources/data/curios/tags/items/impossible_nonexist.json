@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "divinebeast:impossible_nonexist"
+    "divinebeast:impossible_nonexist",
+    "divinebeast:coward_choice"
   ]
 }

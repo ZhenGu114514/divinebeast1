@@ -58,6 +58,18 @@ public final class OrbitAuraClient {
     /** Z 键本地开关状态（默认开）。 */
     private static boolean visible = true;
 
+    /**
+     * 是否绘制「低阶大环」（跟随本体朝向、位于脑后的那一组大圆环）。
+     *
+     * <p><b>按需求关闭</b>：祂诅咒 / 祂救赎 / 兽诅咒 / 兽拯救 / 自·我 这 5 个低阶形态
+     * 不再显示大环 —— 同时佩戴『祂』与『兽』时原本会叠出 1~2 个大环，现全部去掉。
+     *
+     * <p>证悟系（祂者初 / 祂者极 / 真者祂）跟随视角的<b>小环不受影响</b>，
+     * 仍然照常渲染（见 {@code renderOne} 第 2 段）。
+     * 若日后想恢复旧观感，把这里改回 {@code true} 即可（其余代码无需改动）。
+     */
+    private static final boolean DRAW_BIG_RINGS = false;
+
     /** 圆心相对头部中心向后（脑后方向）的偏移（格）。 */
     private static final double CENTER_BACK = 0.5D;
     /** 大环中心相对头部中心向上偏移（格）。 */
@@ -329,8 +341,8 @@ public final class OrbitAuraClient {
         Vec3 cam = event.getCamera().getPosition();
         float partialTick = event.getPartialTick();
         Vec3 head = headCenter(target, partialTick);
-        // 大圆环跟随"本体"（yBodyRot）；证悟小环跟随"视角"（getYRot）
-        Vec3 bodyFacing = horizontalFacing(target.yBodyRot);
+        // 证悟小环跟随"视角"（getYRot）；低阶大环本应跟随"本体"（yBodyRot），
+        // 但大环已按要求关闭，故本体朝向只在需要时于下方块内计算。
         Vec3 viewFacing = horizontalFacing(target.getYRot());
 
         PoseStack pose = event.getPoseStack();
@@ -338,19 +350,26 @@ public final class OrbitAuraClient {
         MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         try {
             int subCount = equippedSubCount(target);
-            // 1) 低阶大环：半径逐层外扩，圆心在脑后、上移；朝向跟随"本体"
-            int bigIndex = 0;
-            for (Form form : forms) {
-                if (form.awakening) {
-                    continue; // 证悟系小环单独绘制
-                }
-                try {
-                    double radius = RING_BASE + bigIndex * RING_STEP;
-                    Vec3 center = head.add(bodyFacing.scale(-CENTER_BACK)).add(0.0D, CENTER_UP, 0.0D);
-                    renderRing(pose, buffers, cam, center, bodyFacing, radius, form, gameTime, subCount, false);
-                    bigIndex++;
-                } catch (Throwable t) {
-                    logThrottledError("渲染 " + form.display + " 圆环异常", t);
+            // 1) 低阶大环：半径逐层外扩，圆心在脑后、上移；朝向跟随"本体"。
+            //    ⚠ 按需求整段关闭（DRAW_BIG_RINGS = false）：祂诅咒 / 祂救赎 / 兽诅咒 /
+            //    兽拯救 / 自·我 不再显示大环，所以这 5 个形态此后没有任何环绕特效；
+            //    环绕特效现在只属于证悟系（见下方第 2 段小环）。
+            if (DRAW_BIG_RINGS) {
+                // 大环朝向跟随"本体"（yBodyRot），与跟随视角的小环区分开
+                Vec3 bodyFacing = horizontalFacing(target.yBodyRot);
+                int bigIndex = 0;
+                for (Form form : forms) {
+                    if (form.awakening) {
+                        continue; // 证悟系小环单独绘制
+                    }
+                    try {
+                        double radius = RING_BASE + bigIndex * RING_STEP;
+                        Vec3 center = head.add(bodyFacing.scale(-CENTER_BACK)).add(0.0D, CENTER_UP, 0.0D);
+                        renderRing(pose, buffers, cam, center, bodyFacing, radius, form, gameTime, subCount, false);
+                        bigIndex++;
+                    } catch (Throwable t) {
+                        logThrottledError("渲染 " + form.display + " 圆环异常", t);
+                    }
                 }
             }
             // 2) 证悟小环：等比更小、平行、更向内、中心在大环上方 1/4 格；朝向跟随"视角"
