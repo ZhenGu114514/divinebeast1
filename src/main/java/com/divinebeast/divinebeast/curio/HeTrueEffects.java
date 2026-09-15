@@ -41,7 +41,7 @@ import java.util.UUID;
  * <p>本版按需求改写（均为"替换其中一个效果"）：
  * <ul>
  *   <li>11 血之回响 → <b>伤害 × 当前生命值</b>（有多少点生命就乘多少）；</li>
- *   <li>76 旧伤 → <b>22 神威：攻击力 +1 億</b>；</li>
+ *   <li>76 旧伤 → <b>22 神威：攻击力 + 一不可说不可转</b>（float 安全上限内的最大表现，见 MIGHT_DAMAGE）；</li>
  *   <li>圣火灼烧＋迟滞领域 → <b>斥力场：弹开一切非自身的远程弹射物</b>；</li>
  *   <li>1 太初 / 17 归墟 → <b>免疫虚空伤害</b>（不再"从虚空中拉回"）；
  *       且 17 归墟 追加一段<b>与本次伤害等值的虚空伤害</b>；</li>
@@ -76,8 +76,21 @@ public final class HeTrueEffects {
     private static final UUID FLYING_SPEED_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b6");
     /** 万藏：通用(curio)槽固定修饰符 UUID */
     private static final UUID CURIO_HOARD_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b7");
-    /** 神威（由 76 旧伤 改写）：攻击力 +1 億 的固定修饰符 UUID */
+    /** 神威（由 76 旧伤 改写）：攻击力「一不可说不可转」的固定修饰符 UUID */
     private static final UUID MIGHT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b8");
+    /**
+     * 22 神威（由 76 旧伤 改写）：攻击力加成 —— <b>一不可说不可转</b>。
+     *
+     * <p>「不可说不可说转」是佛教大数序列的终点，数值远超 IEEE-754 double 上限
+     * （≈1.8e308），无法如实表达；而且伤害在管线里是 <b>float</b>（上限 ≈3.4e38），
+     * 还要再被「血之回响」乘一次当前生命值（≈2000）、以及救赎击杀奖励的 ×1000，
+     * 所以这里取一个"既远超一切数值、又绝不会在 float 里溢出成 Infinity"的值。
+     *
+     * <p>安全上限估算：3.4e38 ÷ 2000（生命）÷ 1000（救赎奖励）≈ 1.7e32；
+     * 取 {@code 1.0e31} 留约 17 倍余量。效果上等同于"不可说不可转"——
+     * 任何生物（含其它模组的 BOSS）都是一击必杀。
+     */
+    private static final double MIGHT_DAMAGE = 1.0E31D;
     /**
      * 神行移速倍率（MULTIPLY_TOTAL 增量）。1.0 = +100%，即移速 ×2，
      * 与原版「速度 V」等价（药水每级 +20%，V 级 = amp4 = +100%）。
@@ -105,6 +118,10 @@ public final class HeTrueEffects {
     private static final double BEACON_RADIUS = 16.0D;
     /** 磁界拉取范围（格，AABB 边长） */
     private static final double MAGNET_RADIUS = 16.0D;
+    /** 「神威·诛灭」多段手段：主目标额外补的段数（每段都会清零无敌帧） */
+    private static final int EXECUTION_EXTRA_HITS = 8;
+    /** 「神威·诛灭」范围手段：以玩家为中心的作用半径（格，AABB 边长） */
+    private static final double EXECUTION_RADIUS = 16.0D;
     /**
      * 所有"给药水"效果的统一时长：<b>1 分钟</b>（1200 tick）。
      *
@@ -125,9 +142,14 @@ public final class HeTrueEffects {
 
     public static void register() {
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onPlayerTick);
-        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onLivingAttack);
-        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onLivingDamage);
-        MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onDeath);
+        // 防护类监听一律注册在 LOWEST：最后执行 → 别的模组无法在我们取消之后再把伤害"救回来"
+        // （Forge 事件允许后续监听器 setCanceled(false)，所以"拦截"必须抢最后一个位置）。
+        MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,
+                HeTrueEffects::onLivingAttack);
+        MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,
+                HeTrueEffects::onLivingDamage);
+        MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,
+                HeTrueEffects::onDeath);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onEffectApplicable);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onKnockBack);
         MinecraftForge.EVENT_BUS.addListener(HeTrueEffects::onFall);
@@ -217,8 +239,8 @@ public final class HeTrueEffects {
         }
         // ---- 8 神能 / 12 神行（行/飞/泳同速）/ 6 磐石 / 23 无量之躯：属性强化（幂等覆盖）----
         ensureAttribute(player, Attributes.ATTACK_DAMAGE, DAMAGE_MOD, "divinebeast_he_true_dmg", 5000.0D);
-        // 22 神威（由 76 旧伤 改写）：攻击力 +1 億
-        ensureAttribute(player, Attributes.ATTACK_DAMAGE, MIGHT_MOD, "divinebeast_he_true_might", 1.0E8D);
+        // 22 神威（由 76 旧伤 改写）：攻击力 + 一不可说不可转
+        ensureAttribute(player, Attributes.ATTACK_DAMAGE, MIGHT_MOD, "divinebeast_he_true_might", MIGHT_DAMAGE);
         ensureAttribute(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_MOD, "divinebeast_he_true_atk_speed", 1000.0D);
         // 行走 / 飞行 / 游泳移速：X 键关闭时不维持并回收。
         // 行走/游泳读 MOVEMENT_SPEED；创造式飞行的水平速度由 Abilities#flyingSpeed 提供，
@@ -627,12 +649,27 @@ public final class HeTrueEffects {
         LivingEntity victim = event.getEntity();
         // ---- 玩家自身防护（1 太初 / 17 归墟 / 18 界缚）----
         if (victim instanceof Player player && wearing(player)) {
-            // 免疫虚空伤害（坐标判定，不依赖伤害类型的 message id）与 /kill
+            // ═══ 真者祂的「六种伤害全拦截」防御体系 ═══
+            // 本处理器注册在 LOWEST（最后执行），任何模组都无法在我们取消之后再把它改回来。
+            //
+            // ① 堆数值（极高攻击力 / 巨大伤害数字）
+            //    ② 真伤 / 类型穿透（bypasses_armor 之类的伤害类型）
+            //    ③ 篡改事件（别的模组在事件里改数值 → 我们在最后再夹一次）
+            //      → 三者统一由下面「太初」的每秒 1 点额度处理：无论数值多大，一秒只吃 1 点。
+            // ④ 直接改血量 / 逻辑致死（setHealth(0) + 手动死亡流程，如寰宇支配之剑）
+            //      → 由 onDeath 取消死亡事件 + 每 tick 的 restoreVitals 回满血兜住。
+            // ⑤ 兜底抹除里的 kill()（= genericKill + Float.MAX_VALUE）
+            //      → 由下面的 isKillDamage 拦截 + onLivingAttack 更早一层拦截。
+            //
+            // ⚠ 唯一拦不住的：直接 discard()/remove() 把实体从世界里删掉 ——
+            //   那一步不产生任何伤害事件，Forge 也没有可取消的钩子（见本类 onDeath 注释）。
+
+            // ⑤ /kill 类（genericKill，含 kill() 与 /kill 指令）与 虚空伤害：直接免疫
             if (isInVoid(player) || isVoidDamage(event.getSource()) || isKillDamage(event.getSource())) {
                 event.setCanceled(true);
                 return;
             }
-            // 太初：每个自然秒内自身累计最多受到 1 点伤害，同秒内多余伤害全部无视
+            // ①②③ 太初：每个自然秒内自身累计最多受到 1 点伤害，同秒内多余伤害全部无视
             long second = player.level().getGameTime() / 20L;
             double[] budget = SEC_DAMAGE.get(player.getUUID());
             if (budget == null || budget[0] != second) {
@@ -673,26 +710,123 @@ public final class HeTrueEffects {
         // 11 血之回响：伤害 × 当前生命值（本身有多少点生命，攻击力就乘多少）
         amount = amount * Math.max(1.0F, attacker.getHealth());
         event.setAmount(amount);
-        // 9 天罚（附加等值无视护甲真伤）与 17 归墟（附加等值虚空伤害）
-        // 与「10 光之领域」共用同一个 V 键开关：关掉即两者都不再附加。
-        if (!CuriosEffectsState.htrueBeaconToggle(attacker)) {
-            return;
+
+        // V 键：9 天罚（等值无视护甲真伤）+ 17 归墟（等值虚空伤害），与「10 光之领域」同一开关
+        // B 键：神威·诛灭 —— 数值与真伤之外，再依次施加另外 4 种非数值型手段
+        boolean beacon = CuriosEffectsState.htrueBeaconToggle(attacker);
+        boolean execute = CuriosEffectsState.htrueKillToggle(attacker);
+        if (!beacon && !execute) {
+            return; // 两个开关都关：只保留最基础的数值伤害
         }
-        // BOSS（末影龙 / 凋灵）：附加的 generic_kill / fell_out_of_world 这两段打不出来
-        // —— 它们的 hurt 覆写不接受这种"无实体来源"的伤害类型（实测末影龙完全免疫），
-        // 而前面已经 setAmount 的普通伤害是有效的。故改为把两段等值伤害直接折进普通伤害：
-        // 总倍率同样是 3 倍（1 倍普通 + 等值真伤 + 等值虚空伤害），且确实打得出来。
-        // 与 BeastEffects 里"对末影龙等 BOSS 走普通伤害结算"的处理保持一致。
-        if (isBossMob(victim)) {
-            event.setAmount(amount * 3.0F);
-            return;
+
+        if (beacon) {
+            // BOSS（末影龙 / 凋灵）：generic_kill / fell_out_of_world 这两段打不出来
+            // —— 它们的 hurt 覆写不接受这种"无实体来源"的伤害类型（实测末影龙完全免疫），
+            // 而普通伤害是有效的。故把两段等值伤害折进普通伤害：总倍率同样是 3 倍。
+            if (isBossMob(victim)) {
+                event.setAmount(amount * 3.0F);
+            } else {
+                // 家族②：真伤 / 类型穿透 —— 换成无视护甲·附魔·抗性的伤害类型
+                applyingTrueDamage = true;
+                try {
+                    victim.hurt(victim.damageSources().genericKill(), amount);
+                    victim.hurt(victim.damageSources().fellOutOfWorld(), amount);
+                } finally {
+                    applyingTrueDamage = false;
+                }
+            }
         }
+
+        if (execute) {
+            // 家族③④⑤⑥：多段 / 范围 / 逻辑致死 / 兜底抹除
+            applyExecutionChain(attacker, victim, amount);
+        }
+    }
+
+    /**
+     * 「神威·诛灭」（B 键）：把社区里那些"无敌武器"用到的、<b>除堆数值之外</b>的全部手段
+     * 依次施加一遍。每种手段对应一类原理，逐层递进：
+     *
+     * <ol>
+     *   <li><b>多段 + 直接改血量</b>（{@link #EXECUTION_EXTRA_HITS} 段）：每段先走一次正常
+     *       {@code hurt()}（触发事件与伤害数字），再直接 {@code setHealth()} 削减一次 ——
+     *       直接改血量完全绕开原版的"{@code invulnerableTime} + {@code lastHurt}"无敌帧判定
+     *       与一切减免，所以每段都必然落实。用途：击穿"单次伤害上限"型 BOSS。</li>
+     *   <li><b>范围</b>（半径 {@link #EXECUTION_RADIUS} 格内的其它敌对生物）：同等待遇，
+     *       用"次数"淹没各种上限。</li>
+     *   <li><b>逻辑致死</b>（寰宇支配之剑那三步）：先打一段"等于目标当前血量"的真伤，
+     *       再 {@code setHealth(0)} 直接置零（绕过一切伤害计算），最后补一发
+     *       {@code generic_kill + Float.MAX_VALUE} 把目标推入死亡流程（保留掉落物与经验）。</li>
+     *   <li><b>兜底抹除</b>：仍没进死亡流程 → {@code kill()}（等价 {@code /kill}）。
+     *       注：这里刻意<b>不用</b> {@code discard()} —— 那会跳过死亡流程、没有掉落物，
+     *       还会破坏 BOSS 战与任务进度，而且没有任何事件可以拦截它。</li>
+     * </ol>
+     *
+     * <p>全程持有 {@code applyingTrueDamage} 标记：嵌套的 {@code hurt()} 会再次触发
+     * {@link #onLivingDamage}，靠这个标记直接返回，避免无限递归。
+     *
+     * <p><b>无法击杀的情况</b>（与社区里那些"杀不死"的玩意一致）：目标取消了死亡事件
+     * （{@code LivingDeathEvent}）、或每 tick 把血量写回（锁血）、或根本没有可命中的判定。
+     */
+    private static void applyExecutionChain(Player attacker, LivingEntity victim, float amount) {
         applyingTrueDamage = true;
         try {
-            victim.hurt(victim.damageSources().genericKill(), amount);
-            victim.hurt(victim.damageSources().fellOutOfWorld(), amount);
+            net.minecraft.world.damagesource.DamageSource playerAttack =
+                    victim.damageSources().playerAttack(attacker);
+            // ——— ③ 多段 + ④ 直接改血量 ———
+            // 每段"先走一次正常 hurt（触发伤害事件与伤害数字），再直接 setHealth 削减一次"。
+            // 直接改血量完全绕开原版的 invulnerableTime / lastHurt 无敌帧判定和一切减免，
+            // 因此 8 段一定会全部落实 —— 专治"单次伤害上限"型 BOSS。
+            for (int i = 0; i < EXECUTION_EXTRA_HITS && victim.isAlive(); i++) {
+                victim.hurt(playerAttack, amount);
+                victim.setHealth(Math.max(0.0F, victim.getHealth() - amount));
+            }
+            // ——— ⑥ 范围：半径内其它敌对生物一并结算 ———
+            for (LivingEntity other : attacker.level().getEntitiesOfClass(LivingEntity.class,
+                    AABB.ofSize(attacker.position(),
+                            EXECUTION_RADIUS * 2, EXECUTION_RADIUS * 2, EXECUTION_RADIUS * 2))) {
+                if (other == victim || other.is(attacker) || !other.isAlive()
+                        || !(other instanceof net.minecraft.world.entity.monster.Enemy)
+                        || isProtectedDummy(other)) {
+                    continue;
+                }
+                other.hurt(other.damageSources().genericKill(), amount);
+                other.setHealth(Math.max(0.0F, other.getHealth() - amount));
+                killWithDrops(other);
+            }
+            // ——— ⑤ 逻辑致死 + 兜底抹除 ———
+            killWithDrops(victim);
+        } catch (Throwable t) {
+            // 任何异常都不该把整局游戏带崩，只记一次日志
+            LOGGER.warn("[divinebeast] 神威·诛灭 执行链异常", t);
         } finally {
             applyingTrueDamage = false;
+        }
+    }
+
+    /**
+     * 「逻辑致死」三步（寰宇支配之剑的原理）：
+     * <ol>
+     *   <li><b>等血真伤</b>：用无视护甲/附魔/抗性的伤害类型打一段"等于目标当前血量"的伤害 ——
+     *       走正常死亡流程，所以掉落物与经验球都正常产出；</li>
+     *   <li><b>血量置零</b>：{@code setHealth(0)} 直接改血量，绕过一切减免与伤害上限
+     *       （原版把生物血量数据改成 0 本身就足以造成致死效果）；</li>
+     *   <li><b>兜底抹除</b>：仍没进入死亡流程就补一发 {@code kill()}
+     *       （等价 {@code /kill}：{@code genericKill + Float.MAX_VALUE}）。</li>
+     * </ol>
+     * 刻意不用 {@code discard()}：那会跳过死亡流程、没有掉落物，还会破坏 BOSS 战与任务进度，
+     * 而且没有任何事件能拦截它。
+     */
+    private static void killWithDrops(LivingEntity target) {
+        if (target.isRemoved()) {
+            return;
+        }
+        target.hurt(target.damageSources().genericKill(), Math.max(1.0F, target.getHealth()));
+        if (!target.isRemoved() && target.getHealth() > 0.0F) {
+            target.setHealth(0.0F);
+        }
+        if (!target.isRemoved() && target.getHealth() > 0.0F) {
+            target.kill();
         }
     }
 

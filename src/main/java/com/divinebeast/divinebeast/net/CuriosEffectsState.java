@@ -14,6 +14,8 @@ public final class CuriosEffectsState {
     public static final String TAG_HTRUE_SPEED_TOGGLE = "divinebeast.htrue_speed_toggle";
     /** V 键：真者祂「10 光之领域」范围伤害开关（默认开启） */
     public static final String TAG_HTRUE_BEACON_TOGGLE = "divinebeast.htrue_beacon_toggle";
+    /** B 键：真者祂「神威·诛灭」五重伤害手段开关（默认开启） */
+    public static final String TAG_HTRUE_KILL_TOGGLE = "divinebeast.htrue_kill_toggle";
 
     private CuriosEffectsState() {
     }
@@ -46,6 +48,19 @@ public final class CuriosEffectsState {
 
     public static void setHtrueBeaconToggle(Player player, boolean value) {
         player.getPersistentData().putBoolean(TAG_HTRUE_BEACON_TOGGLE, value);
+    }
+
+    /**
+     * 真者祂「神威·诛灭」：命中时依次施加 5 种非数值型伤害手段
+     * （真伤穿透 / 多段 / 范围 / 逻辑致死 / 兜底抹除）。默认开启，B 键可关。
+     */
+    public static boolean htrueKillToggle(Player player) {
+        return !player.getPersistentData().contains(TAG_HTRUE_KILL_TOGGLE)
+                || player.getPersistentData().getBoolean(TAG_HTRUE_KILL_TOGGLE);
+    }
+
+    public static void setHtrueKillToggle(Player player, boolean value) {
+        player.getPersistentData().putBoolean(TAG_HTRUE_KILL_TOGGLE, value);
     }
 
     public static boolean hasRedemptionMark(net.minecraft.world.entity.LivingEntity entity) {

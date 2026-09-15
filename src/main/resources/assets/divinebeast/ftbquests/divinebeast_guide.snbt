@@ -452,6 +452,7 @@
 				"{\"translate\":\"divinebeast.ftb.keys.x\"}"
 				"{\"translate\":\"divinebeast.ftb.keys.v\"}"
 				"{\"translate\":\"divinebeast.ftb.keys.z\"}"
+				"{\"translate\":\"divinebeast.ftb.keys.b\"}"
 			]
 			id: "1D1CEA57E0002000"
 			optional: true

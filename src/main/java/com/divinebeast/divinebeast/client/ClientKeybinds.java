@@ -33,6 +33,10 @@ public final class ClientKeybinds {
     private static final KeyMapping TOGGLE_BEACON = new KeyMapping(
             "key.divinebeast.toggle_beacon", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY);
 
+    /** B 键：真者祂「神威·诛灭」五重伤害手段开关 */
+    private static final KeyMapping TOGGLE_KILL = new KeyMapping(
+            "key.divinebeast.toggle_kill", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY);
+
     private ClientKeybinds() {
     }
 
@@ -46,6 +50,7 @@ public final class ClientKeybinds {
         event.register(TOGGLE_SPEED);
         event.register(TOGGLE_AURA);
         event.register(TOGGLE_BEACON);
+        event.register(TOGGLE_KILL);
     }
 
     private static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -63,6 +68,9 @@ public final class ClientKeybinds {
         }
         while (TOGGLE_BEACON.consumeClick()) {
             Networking.sendToServer(new com.divinebeast.divinebeast.net.ToggleBeaconMessage());
+        }
+        while (TOGGLE_KILL.consumeClick()) {
+            Networking.sendToServer(new com.divinebeast.divinebeast.net.ToggleKillMessage());
         }
     }
 }
