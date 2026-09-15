@@ -67,6 +67,10 @@ import java.util.UUID;
  */
 public final class HeTrueEffects {
 
+    /** 本类日志（神威·诛灭 执行链等处的异常记录用）。 */
+    private static final org.apache.logging.log4j.Logger LOGGER =
+            org.apache.logging.log4j.LogManager.getLogger();
+
     // 属性修饰符固定 UUID
     private static final UUID DAMAGE_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b1");
     private static final UUID SPEED_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b2");
