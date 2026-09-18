@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "X  ",
+    "XX ",
+    "XXX"
+  ],
+  "key": {
+    "X": {
+      "item": "divinebeast:beast_block"
+    }
+  },
+  "result": {
+    "item": "divinebeast:beast_stairs",
+    "count": 4
+  }
+}

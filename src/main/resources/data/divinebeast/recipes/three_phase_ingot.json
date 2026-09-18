@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "divinebeast:self_ingot"
+    },
+    {
+      "item": "divinebeast:beast_ingot"
+    },
+    {
+      "item": "divinebeast:he_ingot"
+    }
+  ],
+  "result": {
+    "item": "divinebeast:three_phase_ingot",
+    "count": 1
+  }
+}

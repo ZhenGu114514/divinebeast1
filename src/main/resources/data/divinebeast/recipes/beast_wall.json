@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "XXX",
+    "XXX"
+  ],
+  "key": {
+    "X": {
+      "item": "divinebeast:beast_block"
+    }
+  },
+  "result": {
+    "item": "divinebeast:beast_wall",
+    "count": 6
+  }
+}

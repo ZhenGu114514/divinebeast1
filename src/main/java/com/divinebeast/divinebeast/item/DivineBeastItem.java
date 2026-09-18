@@ -48,6 +48,20 @@ public class DivineBeastItem extends Item {
         return new Item.Properties().stacksTo(1);
     }
 
+    /**
+     * NBT 标记：该饰品正放在<b>女仆</b>的饰品栏里，按"救赎形态"生效
+     * （写入 / 清除见 {@code curio/MaidEffects}）。
+     *
+     * <p>放在这里而不是 Curios 相关类里，是因为本类的 tooltip 必须能在
+     * <b>未装 Curios</b> 的环境下安全读取该标记（那类一旦被类加载就会 NoClassDefFoundError）。
+     */
+    public static final String TAG_MAID_REDEEMED = "divinebeast.maid_redeemed";
+
+    /** 该物品栈是否处于"女仆救赎形态"（女仆饰品栏里的『祂』『兽』）。 */
+    public static boolean isMaidRedeemed(ItemStack stack) {
+        return stack != null && stack.hasTag() && stack.getTag().getBoolean(TAG_MAID_REDEEMED);
+    }
+
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
@@ -134,7 +148,10 @@ public class DivineBeastItem extends Item {
         // 动态 tooltip 只在客户端 + Curios 已安装时启用；分支外的引用不会在
         // 未安装 Curios 或服务端被解析，因此不会触发类加载错误。
         if (level != null && level.isClientSide && CompatChecks.curiosLoaded()) {
-            if (stack.is(ModItems.DEITY.get())) {
+            if (isMaidRedeemed(stack)) {
+                // 女仆饰品栏中：『祂』『兽』直接按救赎 / 拯救形态显示（女仆不经历诅咒阶段）
+                CuriosCompat.appendMaidRedeemedTooltip(stack, tooltip);
+            } else if (stack.is(ModItems.DEITY.get())) {
                 CuriosCompat.appendDeityTooltip(stack, tooltip);
             } else if (stack.is(ModItems.BEAST.get())) {
                 CuriosCompat.appendBeastTooltip(stack, tooltip);

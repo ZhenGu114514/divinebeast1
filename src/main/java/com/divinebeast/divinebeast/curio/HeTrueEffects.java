@@ -41,7 +41,7 @@ import java.util.UUID;
  * <p>本版按需求改写（均为"替换其中一个效果"）：
  * <ul>
  *   <li>11 血之回响 → <b>伤害 × 当前生命值</b>（有多少点生命就乘多少）；</li>
- *   <li>76 旧伤 → <b>22 神威：攻击力 + 一不可说不可转</b>（float 安全上限内的最大表现，见 MIGHT_DAMAGE）；</li>
+ *   <li>76 旧伤 → <b>22 神威：攻击力 + 一不可说不可转</b>（直接取 double 最大值，见 MIGHT_DAMAGE）；</li>
  *   <li>圣火灼烧＋迟滞领域 → <b>斥力场：弹开一切非自身的远程弹射物</b>；</li>
  *   <li>1 太初 / 17 归墟 → <b>免疫虚空伤害</b>（不再"从虚空中拉回"）；
  *       且 17 归墟 追加一段<b>与本次伤害等值的虚空伤害</b>；</li>
@@ -85,16 +85,18 @@ public final class HeTrueEffects {
     /**
      * 22 神威（由 76 旧伤 改写）：攻击力加成 —— <b>一不可说不可转</b>。
      *
-     * <p>「不可说不可说转」是佛教大数序列的终点，数值远超 IEEE-754 double 上限
-     * （≈1.8e308），无法如实表达；而且伤害在管线里是 <b>float</b>（上限 ≈3.4e38），
-     * 还要再被「血之回响」乘一次当前生命值（≈2000）、以及救赎击杀奖励的 ×1000，
-     * 所以这里取一个"既远超一切数值、又绝不会在 float 里溢出成 Infinity"的值。
+     * <p>按需求<b>直接取最大值</b>：「不可说不可说转」是佛教大数序列的终点、远超 IEEE-754
+     * double 上限，无法如实表达，所以用 double 能表示的最大有限值
+     * （{@link Double#MAX_VALUE} ≈ 1.7976931348623157e308）作为它的工程实现 ——
+     * 换算成攻击力就是"一不可说不可转"。
      *
-     * <p>安全上限估算：3.4e38 ÷ 2000（生命）÷ 1000（救赎奖励）≈ 1.7e32；
-     * 取 {@code 1.0e31} 留约 17 倍余量。效果上等同于"不可说不可转"——
-     * 任何生物（含其它模组的 BOSS）都是一击必杀。
+     * <p>溢出保护：伤害在管线里是 <b>float</b>（上限 ≈3.4e38），属性值转成 float 时会饱和成
+     * {@code Infinity}，再乘上「血之回响」的当前生命值必然还是 Infinity。
+     * Infinity 一旦参与后续运算（击退、伤害显示、其它模组的减免计算）极易产生 NaN，
+     * 因此在 {@code onLivingDamage} 里把最终数值夹到 {@link Float#MAX_VALUE}（有限值）——
+     * 数值依然是天文级（3.4e38），但不会再污染整条管线。
      */
-    private static final double MIGHT_DAMAGE = 1.0E31D;
+    private static final double MIGHT_DAMAGE = Double.MAX_VALUE;
     /**
      * 神行移速倍率（MULTIPLY_TOTAL 增量）。1.0 = +100%，即移速 ×2，
      * 与原版「速度 V」等价（药水每级 +20%，V 级 = amp4 = +100%）。
@@ -713,17 +715,25 @@ public final class HeTrueEffects {
         }
         // 11 血之回响：伤害 × 当前生命值（本身有多少点生命，攻击力就乘多少）
         amount = amount * Math.max(1.0F, attacker.getHealth());
+        // 溢出保护：属性取的是 double 最大值，转 float 时会饱和成 Infinity，
+        // 再乘生命值仍是 Infinity → 夹回有限值，避免 NaN 污染击退/显示/别的模组计算。
+        if (!Float.isFinite(amount)) {
+            amount = Float.MAX_VALUE;
+        }
         event.setAmount(amount);
 
-        // V 键：9 天罚（等值无视护甲真伤）+ 17 归墟（等值虚空伤害），与「10 光之领域」同一开关
-        // B 键：神威·诛灭 —— 数值与真伤之外，再依次施加另外 4 种非数值型手段
-        boolean beacon = CuriosEffectsState.htrueBeaconToggle(attacker);
-        boolean execute = CuriosEffectsState.htrueKillToggle(attacker);
-        if (!beacon && !execute) {
+        // 三项开关：
+        //   · 「9 天罚 + 17 归墟」的真伤 → 模组列表配置 htrue_true_damage
+        //   · 「神威·诛灭」五重手段     → 模组列表配置 htrue_execution（且可用绑定按键临时关）
+        //   · 「10 光之领域」范围伤害   → 保持原样，仍由游戏内按键控制（见 onPlayerTick）
+        boolean trueDamage = com.divinebeast.divinebeast.DivineBeastConfig.HTRUE_TRUE_DAMAGE.get();
+        boolean execute = com.divinebeast.divinebeast.DivineBeastConfig.HTRUE_EXECUTION.get()
+                && CuriosEffectsState.htrueKillToggle(attacker);
+        if (!trueDamage && !execute) {
             return; // 两个开关都关：只保留最基础的数值伤害
         }
 
-        if (beacon) {
+        if (trueDamage) {
             // BOSS（末影龙 / 凋灵）：generic_kill / fell_out_of_world 这两段打不出来
             // —— 它们的 hurt 覆写不接受这种"无实体来源"的伤害类型（实测末影龙完全免疫），
             // 而普通伤害是有效的。故把两段等值伤害折进普通伤害：总倍率同样是 3 倍。

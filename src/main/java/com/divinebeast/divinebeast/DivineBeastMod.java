@@ -41,6 +41,20 @@ public class DivineBeastMod {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         ModItems.register(modBus);
+        // 三个中立 boss 的「同名方块」（可分解为锭 → 合成武器/盔甲）
+        com.divinebeast.divinebeast.block.ModBlocks.register(modBus);
+        // 三个中立 boss『我』『兽』『祂』：实体与属性注册
+        com.divinebeast.divinebeast.boss.ModEntities.register(modBus);
+        // 中立 boss 的竞技场：距中心 1000 格外选址 → 玩家靠近时清场铺地 → 召唤
+        com.divinebeast.divinebeast.boss.BossArena.register();
+        // 光柱（祂剑被动 + 『祂』的招式共用）
+        com.divinebeast.divinebeast.boss.LightPillar.register();
+        // 三个 boss 盔甲的套装效果（每件 / 全套）
+        com.divinebeast.divinebeast.item.ArmorSetEffects.register();
+        // 三个 boss 武器的被动（吸血 / 全负面 / 光柱）
+        com.divinebeast.divinebeast.item.WeaponEffects.register();
+        // 模组列表里的配置界面（神威·诛灭 / 天罚·归墟真伤 两个开关）
+        DivineBeastConfig.register();
         Networking.register();
         FirstChestReward.register(); // 首箱→『祂』『兽』；分维度首箱→感知/意识/反叛
         BossRewards.register();      // 末影龙→时刻、凋灵→法则 掉落
@@ -61,6 +75,9 @@ public class DivineBeastMod {
         // 真者祂「蹈水履火」客户端侧：水/岩浆中视野无遮挡 + 移速不降低
         DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
                 () -> () -> com.divinebeast.divinebeast.client.HeTrueLiquidClient.init());
+        // 中立 boss 的 Steve 模型 + Steve 皮肤渲染
+        DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> () -> com.divinebeast.divinebeast.client.BossClient.init(modBus));
         // FTB Quests 可选前置：装有时把内置任务书章节注入服务端 config（不引用 FTB 类）
         com.divinebeast.divinebeast.integration.FTBQuestsCompat.registerIfPresent();
 
@@ -74,6 +91,10 @@ public class DivineBeastMod {
             HeTrueEffects.register();
             // 懦弱的抉择：进入世界自动发放并装进通用 curio 槽（装备期间无效一切诅咒负面）
             com.divinebeast.divinebeast.curio.CowardChoice.register();
+            // 车万女仆适配：玩家获得『真者祂』时额外补发一件（女仆侧槽位由数据包直接给）
+            com.divinebeast.divinebeast.integration.MaidCompat.register();
+            // 车万女仆权能引擎：女仆直接按救赎 / 拯救形态获得权能（对玩家零伤害）
+            com.divinebeast.divinebeast.curio.MaidEffects.register();
             // 碎片门槛：感知/意识/反叛 需已装备『祂者初』
             FirstChestReward.setFragmentGate(AscensionEffects::wearingHeFirst);
             // 证悟抉择界面仅客户端显示

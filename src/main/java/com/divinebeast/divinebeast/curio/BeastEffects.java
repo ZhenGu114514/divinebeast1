@@ -138,7 +138,18 @@ public final class BeastEffects {
         return false;
     }
 
+    /**
+     * 该生物是否佩戴『兽』。
+     *
+     * <p><b>女仆除外</b>：女仆不经历诅咒阶段 —— 『兽』放进女仆饰品栏时直接按"拯救"形态生效，
+     * 由 {@link MaidEffects} 单独实现。这里直接返回 false，等于把本类（兽系诅咒 / 拯救 / 自·我
+     * 的全部逻辑）对女仆整体关闭：否则女仆戴着『兽』却一件法则都没戴，stageOf 会算出 1（诅咒），
+     * 攻击落空、伤害锁 1、治疗反噬等诅咒就会落到女仆身上。
+     */
     private static boolean wearingBeast(LivingEntity entity) {
+        if (MaidEffects.isMaid(entity)) {
+            return false;
+        }
         return worn(entity, BEAST_SLOT, ModItems.BEAST.get());
     }
 

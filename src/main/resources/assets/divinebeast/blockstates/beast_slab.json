@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "type=bottom": { "model": "divinebeast:block/beast_slab" },
+    "type=top": { "model": "divinebeast:block/beast_slab_top" },
+    "type=double": { "model": "divinebeast:block/beast_block" }
+  }
+}

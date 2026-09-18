@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "divinebeast:block/self_block"
+    }
+  }
+}

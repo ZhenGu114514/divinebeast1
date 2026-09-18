@@ -146,6 +146,28 @@ public final class CuriosCompat {
         }
     }
 
+    /**
+     * 女仆佩戴时的动态提示（仅客户端调用）：
+     * 『祂』『兽』放进女仆饰品栏后<b>直接按救赎 / 拯救形态</b>生效（女仆不经历诅咒阶段），
+     * 因此这里显示救赎正文而不是玩家那种"按自身阶段"的文本。
+     *
+     * <p>判定依据是物品栈上的 NBT 标记（由 {@code curio/MaidEffects} 写入），
+     * 而不是本地玩家的状态 —— 否则玩家看女仆的饰品时只会看到自己的阶段文本。
+     */
+    public static void appendMaidRedeemedTooltip(ItemStack stack, List<Component> tooltip) {
+        if (stack.is(ModItems.DEITY.get())) {
+            tooltip.add(wrap("item.divinebeast.deity.lore_phase2", ChatFormatting.GOLD));
+            tooltip.add(Component.translatable("divinebeast.stage.deity_redemption")
+                    .withStyle(ChatFormatting.GRAY));
+        } else {
+            tooltip.add(wrap("item.divinebeast.beast.lore_redemption", ChatFormatting.GOLD));
+            tooltip.add(Component.translatable("divinebeast.stage.beast_salvation")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        tooltip.add(Component.translatable("divinebeast.tooltip.maid_redeemed")
+                .withStyle(ChatFormatting.AQUA));
+    }
+
     /** 用 『』 包裹翻译文本并上色 */
     private static Component wrap(String key, ChatFormatting color) {
         return Component.literal("『").withStyle(color)
@@ -195,7 +217,11 @@ public final class CuriosCompat {
             // （crash: mezz.jei.gui.events.GuiEventHandler.onDrawBackgroundPost）。
             // 该路径在开放卸下之前根本走不到，因此恢复"一律不可卸下"即可消除崩溃。
             // 若日后确实需要创造模式下可卸下，必须改为"界面关闭后再回收槽位"或走服务端指令。
-            return false;
+            //
+            // 非玩家佩戴者（目前只有车万女仆的 Curios 饰品栏）不锁：
+            // 女仆用的是**常驻槽位**（data/divinebeast/curios/slots/he_true_maid.json 固定 size 1），
+            // 取下物品不会改变槽位数量，不存在上面那条崩溃路径；允许取下也方便把饰品换给别的女仆。
+            return slotContext.entity() != null && !(slotContext.entity() instanceof Player);
         }
 
         @Override

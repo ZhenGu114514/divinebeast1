@@ -453,6 +453,8 @@
 				"{\"translate\":\"divinebeast.ftb.keys.v\"}"
 				"{\"translate\":\"divinebeast.ftb.keys.z\"}"
 				"{\"translate\":\"divinebeast.ftb.keys.b\"}"
+				"{\"translate\":\"divinebeast.ftb.keys.config\"}"
+				"{\"translate\":\"divinebeast.ftb.keys.true_damage_warning\"}"
 			]
 			id: "1D1CEA57E0002000"
 			optional: true

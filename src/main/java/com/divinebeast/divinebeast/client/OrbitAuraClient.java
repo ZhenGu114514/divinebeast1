@@ -94,8 +94,10 @@ public final class OrbitAuraClient {
     private static final int RING_SEGMENTS = 96;
     /** 圆环中心高度（格，头部中心）。 */
     private static final double HEAD_CENTER_Y = 1.42D;
-    /** 小圆环绕大圆圆心转动的角速度（弧度/tick）。 */
-    private static final double ORBIT_SPEED = 0.12D;
+    /** 小圆环绕大圆圆心转动的角速度（弧度/tick）。
+     *  <p>1.6.96 起加快：0.12 → 0.30（2.5 倍）。原速约 2.6 秒一圈，现在约 1.05 秒一圈。
+     *  想再快/再慢只改这一个数即可（同时配合下面的 partialTick 平滑，转快也不会一跳一跳）。 */
+    private static final double ORBIT_SPEED = 0.30D;
     /** 证悟小环上"小圆"的半径（格）。 */
     private static final double ORBIT_DOT_RADIUS = 0.05D;
 
@@ -365,7 +367,7 @@ public final class OrbitAuraClient {
                     try {
                         double radius = RING_BASE + bigIndex * RING_STEP;
                         Vec3 center = head.add(bodyFacing.scale(-CENTER_BACK)).add(0.0D, CENTER_UP, 0.0D);
-                        renderRing(pose, buffers, cam, center, bodyFacing, radius, form, gameTime, subCount, false);
+                        renderRing(pose, buffers, cam, center, bodyFacing, radius, form, gameTime, subCount, false, partialTick);
                         bigIndex++;
                     } catch (Throwable t) {
                         logThrottledError("渲染 " + form.display + " 圆环异常", t);
@@ -385,7 +387,7 @@ public final class OrbitAuraClient {
                     }
                     Vec3 center = head.add(viewFacing.scale(-SMALL_RING_BACK))
                             .add(0.0D, CENTER_UP + SMALL_RING_UP, 0.0D);
-                    renderRing(pose, buffers, cam, center, viewFacing, radius, form, gameTime, subCount, true);
+                    renderRing(pose, buffers, cam, center, viewFacing, radius, form, gameTime, subCount, true, partialTick);
                     smallIndex++;
                 } catch (Throwable t) {
                     logThrottledError("渲染 " + form.display + " 小环异常", t);
@@ -435,7 +437,7 @@ public final class OrbitAuraClient {
     private static void renderRing(PoseStack pose, MultiBufferSource.BufferSource buffers,
                                    Vec3 cam, Vec3 center, Vec3 facing,
                                    double radius, Form form, long gameTime,
-                                   int subCount, boolean isSmall) {
+                                   int subCount, boolean isSmall, float partial) {
         Vec3[] basis = ringBasis(facing);
         VertexConsumer consumer = buffers.getBuffer(RenderType.lines());
         pose.pushPose();
@@ -468,8 +470,13 @@ public final class OrbitAuraClient {
             float og = blend(form.g, orbitM);
             float ob = blend(form.b, orbitM);
             int n = Math.max(1, Math.min(subCount, 12));
+            // 用 gameTime + partialTick 求角度：转动按帧插值，高帧率下是连续的，
+            // 不会因为"每 tick 才跳一次角度"而在加速后显得一跳一跳。
+            // （必须显式把 partial 提升为 double：long + float 会按 float 计算，
+            //   gameTime 很大时小数部分会被 float 精度吃掉，转起来又会变卡顿。）
+            double spinTime = gameTime + (double) partial;
             for (int k = 0; k < n; k++) {
-                double ang = ORBIT_SPEED * gameTime + (Math.PI * 2.0D * k) / n;
+                double ang = ORBIT_SPEED * spinTime + (Math.PI * 2.0D * k) / n;
                 // 小圆：位于主环上的一个小圆环点
                 Vec3 p = ringPoint(basis, radius, ang);
                 drawTinyCircle(consumer, pose, basis, p, ORBIT_DOT_RADIUS, or, og, ob, 0.9F);

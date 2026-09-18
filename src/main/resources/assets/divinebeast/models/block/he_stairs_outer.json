@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/outer_stairs",
+  "textures": {
+    "bottom": "divinebeast:block/he_block",
+    "top": "divinebeast:block/he_block",
+    "side": "divinebeast:block/he_block"
+  }
+}

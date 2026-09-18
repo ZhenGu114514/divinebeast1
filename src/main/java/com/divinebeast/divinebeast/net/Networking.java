@@ -54,6 +54,15 @@ public final class Networking {
                 ItemCopyMessage::encode,
                 ItemCopyMessage::decode,
                 ItemCopyMessage::handle);
+        // 中立 boss 的交易界面：S2C 打开 + C2S 结算
+        CHANNEL.registerMessage(nextId++, OpenBossTradeMessage.class,
+                OpenBossTradeMessage::encode,
+                OpenBossTradeMessage::decode,
+                OpenBossTradeMessage::handle);
+        CHANNEL.registerMessage(nextId++, BossTradeRequestMessage.class,
+                BossTradeRequestMessage::encode,
+                BossTradeRequestMessage::decode,
+                BossTradeRequestMessage::handle);
     }
 
     public static void sendToServer(Object message) {

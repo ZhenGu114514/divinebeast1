@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "divinebeast:item/three_phase_pickaxe"
+  }
+}

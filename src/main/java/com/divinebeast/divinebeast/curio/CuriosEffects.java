@@ -124,8 +124,18 @@ public final class CuriosEffects {
     // 状态读取
     // ==================================================================
 
-    /** 玩家当前是否佩戴『祂』（divine 槽内有 deity） */
+    /**
+     * 玩家当前是否佩戴『祂』（divine 槽内有 deity）。
+     *
+     * <p><b>女仆除外</b>：女仆不经历诅咒阶段，『祂』放进女仆饰品栏时直接按"救赎"形态生效，
+     * 由 {@link MaidEffects} 单独实现。这里直接返回 false，等于把本类（阶段一诅咒 + 阶段二救赎）
+     * 对女仆整体关闭 —— 否则女仆戴着『祂』却一件时刻都没戴，{@link #curseActive} 会算出
+     * "诅咒生效"，生命上限锁 2、经验清零、攻击给目标回血等负面就会落到女仆身上。
+     */
     private static boolean wearingDeity(LivingEntity entity) {
+        if (MaidEffects.isMaid(entity)) {
+            return false;
+        }
         return hasInSlot(entity, DEITY_SLOT, ModItems.DEITY.get());
     }
 
@@ -684,12 +694,22 @@ public final class CuriosEffects {
         grantDivineSwing(player);
     }
 
+    /**
+     * 『祂』救赎：生物不主动把救赎形态的玩家选为攻击目标。
+     *
+     * <p><b>与「救赎之击」（攻击未带印记生物改为回满血）合并到同一个按键</b>
+     * （默认未绑定，见 {@code ClientKeybinds} 的「救赎形态 开关」，状态存于
+     * {@link CuriosEffectsState#respawnToggle}）。因此这个按键现在同时代表
+     * <b>整条救赎形态</b>：开 → 生物不选你 + 你的攻击变成治疗；关 → 生物照常打你、
+     * 你也正常造成伤害（默认关闭）。
+     */
     private static void onTargetChange(LivingChangeTargetEvent event) {
         if (event.getEntity().level().isClientSide) {
             return;
         }
         if (event.getNewTarget() instanceof Player player && phaseTwo(player)
-                && !AscensionEffects.effectsDisabled(player)) {
+                && !AscensionEffects.effectsDisabled(player)
+                && CuriosEffectsState.respawnToggle(player)) {
             event.setCanceled(true);
         }
     }
