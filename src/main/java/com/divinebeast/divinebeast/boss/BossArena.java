@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.event.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,8 +44,8 @@ public final class BossArena {
     private static final int MAX_DISTANCE = 1400;
     /** 玩家水平距离小于该值时开始施工（约 19 个区块，正常视距之外） */
     private static final double TRIGGER_DISTANCE = 300.0D;
-    /** 场地半径（格） */
-    private static final int RADIUS = 100;
+    /** 场地半径（格）—— 竞技场维护（清理敌对生物）也用这个值 */
+    public static final int RADIUS = 100;
     /** 需要清空的高度（格） */
     private static final int CLEAR_HEIGHT = 10;
     /** 施工第一阶段：每 tick 生成/加载的区块数 */
@@ -60,10 +61,8 @@ public final class BossArena {
 
     public static void register() {
         MinecraftForge.EVENT_BUS.addListener(BossArena::onLevelTick);
-        // 击杀不致死：取消死亡事件后让它原地重生（清仇恨、回满血、回原位）
+        // 击杀不致死：取消死亡事件后交给 boss 自己结算（续战 / 结束战斗）
         MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, BossArena::onBossDeath);
-        // 竞技场范围内禁止自然刷怪（清出来的场地保持空旷）
-        MinecraftForge.EVENT_BUS.addListener(BossArena::onCheckSpawn);
         // 与祂战斗时玩家死亡 → 祂的时限上限 -10 秒，计时重新开始
         MinecraftForge.EVENT_BUS.addListener(BossArena::onPlayerDeath);
     }
@@ -101,25 +100,6 @@ public final class BossArena {
         event.setCanceled(true);
         net.minecraft.world.entity.Entity killer = event.getSource().getEntity();
         boss.onDefeated(killer == null ? null : killer.getDisplayName());
-    }
-
-    /** 竞技场（半径 {@link #RADIUS} 格的圆盘）内禁止自然生成生物。 */
-    private static void onCheckSpawn(net.minecraftforge.event.entity.living.LivingSpawnEvent.CheckSpawn event) {
-        if (!(event.getLevel() instanceof ServerLevel level)) {
-            return;
-        }
-        if (kindFor(level.dimension()) == null) {
-            return;
-        }
-        BossArenaData data = BossArenaData.of(level);
-        if (!data.isChosen()) {
-            return;
-        }
-        double dx = event.getX() - (data.siteX() + 0.5D);
-        double dz = event.getZ() - (data.siteZ() + 0.5D);
-        if (dx * dx + dz * dz <= (double) RADIUS * RADIUS) {
-            event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
-        }
     }
 
     /** 该维度对应哪个 boss；不是这三个维度则返回 null。 */

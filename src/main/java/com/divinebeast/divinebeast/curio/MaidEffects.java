@@ -610,7 +610,9 @@ public final class MaidEffects {
         if (event.getEntity().level().isClientSide) {
             return;
         }
-        if (event.getNewTarget() instanceof LivingEntity target && isMaid(target) && powered(target)) {
+        // getNewTarget() 本身就已经是 LivingEntity，不能再写 instanceof 模式（会报"表达式类型是模式类型的子类型"）
+        LivingEntity target = event.getNewTarget();
+        if (isMaid(target) && powered(target)) {
             event.setCanceled(true);
         }
     }

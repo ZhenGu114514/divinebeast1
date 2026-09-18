@@ -326,6 +326,9 @@ public class DivineBoss extends PathfinderMob {
             this.updateBossBar();
             this.repelHostiles();
         }
+        if (this.tickCount % 20 == 0) {
+            this.purgeArenaHostiles();
+        }
         if (!this.clone && this.tickCount % 20 == 0) {
             this.updatePhase();
         }
@@ -461,6 +464,27 @@ public class DivineBoss extends PathfinderMob {
         this.moveCooldown = HE_MOVE_COOLDOWN;
         this.announce("divinebeast.msg.boss.pillar", this.getDisplayName(),
                 (int) target.getX(), (int) target.getZ());
+    }
+
+    /**
+     * 竞技场维护：主场（出生点）半径 {@link BossArena#RADIUS} 格内的敌对生物每隔 1 秒清除一次，
+     * 让清出来的场地保持空旷。
+     *
+     * <p>不用"禁止刷怪"的事件钩子（那套 API 在 1.20.1 Forge 里名字变过、容易踩错），
+     * 改成"刷出来就清掉"：效果对玩家一样（场地里不会看到敌对生物），但不会碰
+     * <b>已命名 / 已持久化</b>的生物（比如你自己养的、或别的模组的宠物）。
+     */
+    private void purgeArenaHostiles() {
+        if (!this.homeSet || !(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        AABB box = AABB.ofSize(new Vec3(this.homeX, this.homeY + 8.0D, this.homeZ),
+                BossArena.RADIUS * 2.0D, 64.0D, BossArena.RADIUS * 2.0D);
+        for (Mob mob : serverLevel.getEntitiesOfClass(Mob.class, box)) {
+            if (mob instanceof Enemy && !mob.isPersistenceRequired()) {
+                mob.discard();
+            }
+        }
     }
 
     private void setAttributeMultiplier(Attribute attribute, UUID uuid, String name, double multiplyTotal) {
