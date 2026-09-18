@@ -137,6 +137,8 @@ public class DivineBoss extends PathfinderMob {
 
     /** 交易一次消耗的数量（我=绿宝石 / 兽=熟猪排 / 祂=泥土） */
     public static final int TRADE_COST = 16;
+    /** 被击败后多久在原位重新凝聚（tick）：10 秒 */
+    public static final int RESPAWN_DELAY_TICKS = 200;
     /** 交易冷却（tick）：0.5 秒 */
     public static final int TRADE_COOLDOWN_TICKS = 10;
     /** 交易或击杀时给的同名方块数量 */
@@ -215,6 +217,8 @@ public class DivineBoss extends PathfinderMob {
 
     /** 本次战斗还剩几条命（『我』= 4 条；『兽』『祂』由各自机制决定何时结束战斗） */
     private int livesLeft = SELF_LIVES;
+    /** 这次"倒下"是否已经结算过（防止死亡事件与手动致死路径把同一次死亡结算两遍） */
+    private boolean defeatResolved;
 
     /** 『兽』：还需吸取的生命值 */
     private float beastDrainRemaining = BEAST_DRAIN_TOTAL;
@@ -318,7 +322,7 @@ public class DivineBoss extends PathfinderMob {
         }
         if (this.clone) {
             if (--this.cloneLife <= 0) {
-                this.discard();
+                this.dieNormally();   // 走正常死亡流程：会播死亡动画
                 return;
             }
         }
@@ -328,6 +332,11 @@ public class DivineBoss extends PathfinderMob {
         }
         if (this.tickCount % 20 == 0) {
             this.purgeArenaHostiles();
+        }
+        // 被攻击后进入战斗：追踪玩家并持续攻击（目标丢失/死亡时，重新锁定附近玩家）
+        if (this.provoked && !this.clone && this.tickCount % 20 == 0
+                && (this.getTarget() == null || !this.getTarget().isAlive())) {
+            this.retargetNearestPlayer();
         }
         if (!this.clone && this.tickCount % 20 == 0) {
             this.updatePhase();
@@ -482,7 +491,8 @@ public class DivineBoss extends PathfinderMob {
                 BossArena.RADIUS * 2.0D, 64.0D, BossArena.RADIUS * 2.0D);
         for (Mob mob : serverLevel.getEntitiesOfClass(Mob.class, box)) {
             if (mob instanceof Enemy && !mob.isPersistenceRequired()) {
-                mob.discard();
+                // 走正常的击杀流程（会播死亡动画、也照常掉落），而不是 discard() 静默删除
+                mob.kill();
             }
         }
     }
@@ -538,7 +548,7 @@ public class DivineBoss extends PathfinderMob {
             return false;
         }
         if (this.clone) {
-            // 分身：被打即散，并把伤害等量治疗本体
+            // 分身：被打即散（把伤害等量治疗本体），并且走正常死亡流程 → 会播死亡动画
             if (!this.level().isClientSide) {
                 DivineBoss owner = this.findOwner();
                 if (owner != null) {
@@ -546,7 +556,7 @@ public class DivineBoss extends PathfinderMob {
                     owner.announce("divinebeast.msg.boss.clone_absorbed",
                             this.getDisplayName(), owner.getDisplayName(), (int) amount);
                 }
-                this.discard();
+                this.dieNormally();
             }
             return true;
         }
@@ -615,6 +625,18 @@ public class DivineBoss extends PathfinderMob {
         this.setTarget(player);
     }
 
+    /** 战斗中目标丢失（玩家跑远/死了/进旁观）时，重新锁定 64 格内最近的玩家继续追打。 */
+    private void retargetNearestPlayer() {
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        Player nearest = serverLevel.getNearestPlayer(this, 64.0D);
+        if (nearest != null) {
+            this.setTarget(nearest);
+            this.setLastHurtByMob(nearest);
+        }
+    }
+
     /** 一次战斗的初始状态：『我』4 条命、『兽』需吸取 200 点、『祂』时限 100 秒。 */
     private void resetCombatState() {
         this.livesLeft = this.kind == Kind.SELF ? SELF_LIVES : Integer.MAX_VALUE;
@@ -623,6 +645,7 @@ public class DivineBoss extends PathfinderMob {
         this.heTimerStart = -1L;
         this.killableAnnounced = false;
         this.beastLastDamageSecond = -1L;
+        this.defeatResolved = false;
     }
 
     public int getLivesLeft() {
@@ -654,9 +677,10 @@ public class DivineBoss extends PathfinderMob {
             return;
         }
         this.beastDrainRemaining = Math.max(0.0F, this.beastDrainRemaining - amount);
-        if (this.beastDrainRemaining <= 0.0F) {
-            // 吸满 200 点：这场战斗到此为止（它"死去"＝退回无敌对状态）
-            this.onDefeated(null);
+        if (this.beastDrainRemaining <= 0.0F && this.onDefeated(null)) {
+            // 吸满 200 点 → 这场战斗结束：真正倒下（会播死亡动画），10 秒后重新凝聚
+            this.setHealth(0.0F);
+            this.die(this.damageSources().genericKill());
         }
     }
 
@@ -683,11 +707,17 @@ public class DivineBoss extends PathfinderMob {
      * 无论哪种，都会掉战利品、觉醒 +1、回满血、回原位；战斗结束后再被攻击即开始新的一场
      * （命数 / 吸取计数 / 时限全部重置）。
      */
-    public void onDefeated(Component killerName) {
+    public boolean onDefeated(Component killerName) {
         if (this.level().isClientSide || this.respawning) {
-            return;
+            return this.combatOverOnDefeat();
         }
+        if (this.defeatResolved) {
+            // 这次倒下已经结算过了（例如『兽』吸满后先手动致死后又触发死亡事件）
+            return true;
+        }
+        this.defeatResolved = true;
         this.respawning = true;
+        boolean dieForReal;
         try {
             this.dropBossLoot();
             if (this.awakenings < AWAKEN_MAX_STACKS) {
@@ -720,17 +750,19 @@ public class DivineBoss extends PathfinderMob {
                     ? Component.translatable("divinebeast.boss.unknown_killer") : killerName;
 
             if (combatOver) {
-                // 回归无敌对状态：清仇恨、恢复静止，等玩家再打它才会开始新的一场
+                // 这场战斗结束：真正倒下（播死亡动画、实体被移除），并登记 10 秒后重新凝聚
                 this.provoked = false;
                 this.setTarget(null);
                 this.setLastHurtByMob(null);
                 this.setLastHurtByPlayer(null);
                 this.setNoAi(true);
+                this.scheduleRespawn();
                 this.resetCombatState();
                 this.broadcast("divinebeast.msg.boss.defeated_broadcast",
                         this.getDisplayName(), (int) this.getX(), (int) this.getZ(),
                         killer, this.awakenings);
                 this.announce("divinebeast.msg.boss.defeated", this.getDisplayName(), this.awakenings);
+                dieForReal = true;
             } else if (this.kind == Kind.SELF) {
                 // 还有命：保持仇恨与 AI，原地续战
                 this.setNoAi(false);
@@ -738,16 +770,42 @@ public class DivineBoss extends PathfinderMob {
                         this.getDisplayName(), (int) this.getX(), (int) this.getZ(),
                         killer, this.awakenings, this.livesLeft);
                 this.announce("divinebeast.msg.boss.respawn_lives", this.getDisplayName(), this.livesLeft);
+                dieForReal = false;
+                this.defeatResolved = false;   // 续战：下一次倒下要重新结算
             } else {
                 this.setNoAi(false);
                 this.broadcast("divinebeast.msg.boss.respawn_broadcast",
                         this.getDisplayName(), (int) this.getX(), (int) this.getZ(),
                         killer, this.awakenings);
                 this.announce("divinebeast.msg.boss.respawn", this.getDisplayName());
+                dieForReal = false;
+                this.defeatResolved = false;   // 续战：下一次倒下要重新结算
             }
         } finally {
             this.respawning = false;
         }
+        return dieForReal;
+    }
+
+    /**
+     * 登记"被击败后 10 秒在原位重新凝聚"：把落点 Y、觉醒层数、重生时刻写进该维度的竞技场存档。
+     * {@link BossArena} 每个 tick 检查一次，到点就把全新的 boss 放回原位（无仇恨、静止）。
+     */
+    private void scheduleRespawn() {
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        BossArenaData data = BossArenaData.of(serverLevel);
+        data.setArenaY(this.homeSet ? this.homeY : this.getY());
+        data.setAwakenings(this.awakenings);
+        data.setRespawnAt(serverLevel.getGameTime() + RESPAWN_DELAY_TICKS);
+    }
+
+    /** 重新凝聚时把累积的觉醒层数装回去（越打越强）。 */
+    public void restoreAwakenings(int stacks) {
+        this.awakenings = Math.max(0, Math.min(AWAKEN_MAX_STACKS, stacks));
+        this.applyAwakening();
+        this.setHealth(this.getMaxHealth());
     }
 
     /** 这次"死亡"是否意味着整场战斗结束。 */
@@ -789,15 +847,24 @@ public class DivineBoss extends PathfinderMob {
         this.announce("divinebeast.msg.boss.he_allow", this.heLimitTicks / 20);
     }
 
-    /** 兜底：即使死亡事件没被取消，boss 也不会真的消失（分身除外）。 */
-    @Override
-    public void die(DamageSource source) {
-        if (this.clone) {
-            this.bossBar.removeAllPlayers();
-            super.die(source);
+    /**
+     * 让<b>分身</b>走正常的死亡流程：会播死亡动画（分身无掉落、无经验）。
+     *
+     * <p>刻意不用 {@code discard()} —— 那会跳过整个死亡流程，分身会"凭空消失"、
+     * 没有倒地动画。这里把血量归零后交给 {@code die()}，原版随后会走 tickDeath()，
+     * 播完动画再把实体移除。
+     *
+     * <p><b>本体不走这里</b>：本体的死亡结算统一由 {@code BossArena} 的
+     * {@code LivingDeathEvent} 处理器决定（放行＝这场战斗结束、真死并 10 秒后重生；
+     * 取消＝原地续战）。因此本类<b>刻意不覆盖 {@code die()}</b>，
+     * 避免同一次死亡被结算两遍（双倍战利品 / 双倍觉醒）。
+     */
+    private void dieNormally() {
+        if (!this.clone || this.level().isClientSide || this.isDeadOrDying()) {
             return;
         }
-        this.onDefeated(null);
+        this.setHealth(0.0F);
+        this.die(this.damageSources().genericKill());
     }
 
     @Override

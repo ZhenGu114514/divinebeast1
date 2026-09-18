@@ -85,8 +85,12 @@ public final class BossArena {
     }
 
     /**
-     * boss 永远不会真的从世界里消失：取消死亡事件后交给 {@link DivineBoss#onDefeated} 结算 ——
-     * 还有命就原地续战，这场战斗结束了就退回无敌对状态（分身除外，分身会真正死亡）。
+     * 死亡事件的统一入口：非分身的 boss 每一次"倒下"都交给 {@link DivineBoss#onDefeated} 结算 ——
+     * <ul>
+     *   <li>还有命 / 还没到时限 → <b>取消</b>这次死亡，原地满血继续战斗；</li>
+     *   <li>这场战斗结束 → <b>放行</b>这次死亡（会播死亡动画、实体被移除），
+     *       并在 {@link DivineBoss#RESPAWN_DELAY_TICKS}（10 秒）后由 {@link #respawnBoss} 原位重生。</li>
+     * </ul>
      *
      * <p>放在 LOWEST（最后执行），确保别的模组没法在我们取消之后再把它改回来。
      */
@@ -95,11 +99,15 @@ public final class BossArena {
             return;
         }
         if (boss.isClone()) {
-            return;   // 『我』的分身该死就死
+            return;   // 『我』的分身该死就死（正常死亡流程）
         }
-        event.setCanceled(true);
         net.minecraft.world.entity.Entity killer = event.getSource().getEntity();
-        boss.onDefeated(killer == null ? null : killer.getDisplayName());
+        // 返回 true = 这场战斗结束：放行这次死亡（播死亡动画、实体被移除），
+        //             onDefeated 里已经登记了"10 秒后原位重新凝聚"
+        // 返回 false = 还有命 / 还没到时限：取消死亡，原地满血继续战斗
+        if (!boss.onDefeated(killer == null ? null : killer.getDisplayName())) {
+            event.setCanceled(true);
+        }
     }
 
     /** 该维度对应哪个 boss；不是这三个维度则返回 null。 */
@@ -125,8 +133,15 @@ public final class BossArena {
             return;
         }
         BossArenaData data = BossArenaData.of(level);
+        // 被击败后 10 秒：在原位重新凝聚（全新的实体、无仇恨、静止）
+        if (data.respawnAt() > 0L) {
+            if (level.getGameTime() >= data.respawnAt()) {
+                respawnBoss(level, kind, data);
+            }
+            return;
+        }
         if (data.isSpawned()) {
-            return;   // 每个维度只召唤一次
+            return;   // 已经召唤过了
         }
         if (!data.isChosen()) {
             chooseSite(level, data);
@@ -282,6 +297,7 @@ public final class BossArena {
                 level.getRandom().nextFloat() * 360.0F, 0.0F);
         // 记录重生点：被"击杀"后会回到这里
         boss.setHome(data.siteX() + 0.5D, job.y0 + 1.0D, data.siteZ() + 0.5D);
+        data.setArenaY(job.y0 + 1.0D);
         level.addFreshEntity(boss);
         data.setSpawned(true);
         JOBS.remove(level.dimension());
@@ -292,6 +308,36 @@ public final class BossArena {
         }
         LOGGER.info("[divinebeast] {} 已在中立 boss 竞技场 ({}, {}, {}) 降临",
                 boss.getDisplayName().getString(), data.siteX(), job.y0 + 1, data.siteZ());
+    }
+
+    /**
+     * 被击败 {@link DivineBoss#RESPAWN_DELAY_TICKS} tick（10 秒）后：在原地重新凝聚一个<b>全新的</b>
+     * boss（无仇恨、静止，觉醒层数沿用存档，所以越打越强）。
+     */
+    private static void respawnBoss(ServerLevel level, DivineBoss.Kind kind, BossArenaData data) {
+        EntityType<? extends DivineBoss> type = switch (kind) {
+            case SELF -> ModEntities.SELF_BOSS.get();
+            case BEAST -> ModEntities.BEAST_BOSS.get();
+            case HE -> ModEntities.HE_BOSS.get();
+        };
+        DivineBoss boss = type.create(level);
+        if (boss == null) {
+            return;   // 创建失败：下个 tick 再试
+        }
+        double x = data.siteX() + 0.5D;
+        double y = Double.isNaN(data.arenaY()) ? level.getSeaLevel() + 1.0D : data.arenaY();
+        double z = data.siteZ() + 0.5D;
+        boss.moveTo(x, y, z, level.getRandom().nextFloat() * 360.0F, 0.0F);
+        boss.setHome(x, y, z);
+        boss.restoreAwakenings(data.awakenings());
+        level.addFreshEntity(boss);
+        data.setRespawnAt(-1L);
+        for (ServerPlayer player : level.players()) {
+            player.sendSystemMessage(Component.translatable("divinebeast.msg.boss.reborn",
+                    boss.getDisplayName()));
+        }
+        LOGGER.info("[divinebeast] {} 已在竞技场原位重新凝聚（觉醒 {} 层）",
+                boss.getDisplayName().getString(), data.awakenings());
     }
 
     /**

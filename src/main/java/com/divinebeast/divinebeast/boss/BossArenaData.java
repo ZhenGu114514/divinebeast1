@@ -18,6 +18,12 @@ public class BossArenaData extends SavedData {
     private int siteX;
     private int siteZ;
     private boolean spawned;
+    /** boss 落地的脚部 Y（施工时记录，重生时复用） */
+    private double arenaY = Double.NaN;
+    /** 被击败后"重新凝聚"的游戏刻（-1 = 当前没有待重生） */
+    private long respawnAt = -1L;
+    /** 累积的觉醒层数（跨重生保留，越打越强） */
+    private int awakenings;
 
     public BossArenaData() {
     }
@@ -28,6 +34,9 @@ public class BossArenaData extends SavedData {
         data.siteX = tag.getInt("SiteX");
         data.siteZ = tag.getInt("SiteZ");
         data.spawned = tag.getBoolean("Spawned");
+        data.arenaY = tag.contains("ArenaY") ? tag.getDouble("ArenaY") : Double.NaN;
+        data.respawnAt = tag.contains("RespawnAt") ? tag.getLong("RespawnAt") : -1L;
+        data.awakenings = tag.getInt("Awakenings");
         return data;
     }
 
@@ -37,6 +46,11 @@ public class BossArenaData extends SavedData {
         tag.putInt("SiteX", this.siteX);
         tag.putInt("SiteZ", this.siteZ);
         tag.putBoolean("Spawned", this.spawned);
+        if (!Double.isNaN(this.arenaY)) {
+            tag.putDouble("ArenaY", this.arenaY);
+        }
+        tag.putLong("RespawnAt", this.respawnAt);
+        tag.putInt("Awakenings", this.awakenings);
         return tag;
     }
 
@@ -69,6 +83,33 @@ public class BossArenaData extends SavedData {
 
     public void setSpawned(boolean value) {
         this.spawned = value;
+        this.setDirty();
+    }
+
+    public double arenaY() {
+        return arenaY;
+    }
+
+    public void setArenaY(double value) {
+        this.arenaY = value;
+        this.setDirty();
+    }
+
+    public long respawnAt() {
+        return respawnAt;
+    }
+
+    public void setRespawnAt(long value) {
+        this.respawnAt = value;
+        this.setDirty();
+    }
+
+    public int awakenings() {
+        return awakenings;
+    }
+
+    public void setAwakenings(int value) {
+        this.awakenings = value;
         this.setDirty();
     }
 }
