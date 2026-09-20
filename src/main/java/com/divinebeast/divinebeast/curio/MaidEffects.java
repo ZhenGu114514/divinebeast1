@@ -759,8 +759,10 @@ public final class MaidEffects {
     }
 
     private static boolean isBossMob(LivingEntity entity) {
+        // 本模组的中立 boss 也算 BOSS：女仆的「光之领域」等范围权能不去自动清掉它们。
         return entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
-                || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss;
+                || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss
+                || entity instanceof com.divinebeast.divinebeast.boss.DivineBoss;
     }
 
     /** 试验假人（{@code mmm:dummy}）：不施加任何附加伤害。 */

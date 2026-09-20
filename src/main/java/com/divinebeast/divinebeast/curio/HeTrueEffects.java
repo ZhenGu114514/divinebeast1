@@ -875,8 +875,11 @@ public final class HeTrueEffects {
      * 因此"天罚 + 归墟"必须折进普通伤害里才会在 BOSS 身上生效。
      */
     private static boolean isBossMob(LivingEntity entity) {
+        // 本模组的中立 boss 也一并算进来：它们同样不接受"无实体来源"的真伤，
+        // 所以「天罚 + 归墟」折进普通伤害（3 倍）才是对它们正确的结算方式。
         return entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
-                || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss;
+                || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss
+                || entity instanceof com.divinebeast.divinebeast.boss.DivineBoss;
     }
 
     /**

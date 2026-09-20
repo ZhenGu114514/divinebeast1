@@ -219,6 +219,8 @@ public class DivineBoss extends PathfinderMob {
     private int livesLeft = SELF_LIVES;
     /** 这次"倒下"是否已经结算过（防止死亡事件与手动致死路径把同一次死亡结算两遍） */
     private boolean defeatResolved;
+    /** 正在处理 hurt（防递归护栏，见 {@link #hurt}） */
+    private boolean handlingHurt;
 
     /** 『兽』：还需吸取的生命值 */
     private float beastDrainRemaining = BEAST_DRAIN_TOTAL;
@@ -544,6 +546,13 @@ public class DivineBoss extends PathfinderMob {
      */
     @Override
     public boolean hurt(DamageSource source, float amount) {
+        // 防递归护栏：本方法内部会调用 super.hurt()，那会再次触发 LivingAttackEvent / LivingHurtEvent。
+        // 如果某个监听器在事件里"再 hurt 一次目标"（本模组的救赎印记就有这么一条兜底：
+        // 无来源真伤无效 → 退回一段玩家攻击伤害），就会形成「事件 → hurt → 事件」的无限递归，
+        // 直接 StackOverflow 崩服。嵌套调用一律直接拒绝。
+        if (this.handlingHurt) {
+            return false;
+        }
         if (!(source.getEntity() instanceof Player player)) {
             return false;
         }
@@ -568,7 +577,13 @@ public class DivineBoss extends PathfinderMob {
             this.beastLastDamageSecond = second;
             amount = Math.min(amount, BEAST_DAMAGE_CAP);
         }
-        boolean hurt = super.hurt(source, amount);
+        boolean hurt;
+        this.handlingHurt = true;
+        try {
+            hurt = super.hurt(source, amount);
+        } finally {
+            this.handlingHurt = false;
+        }
         if (hurt && !this.level().isClientSide) {
             this.provoke(player);
             if (this.kind == Kind.SELF) {

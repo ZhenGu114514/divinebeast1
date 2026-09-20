@@ -558,7 +558,12 @@ public final class CuriosEffects {
         }
 
         if (phaseTwo(attacker)) {
-            if (CuriosEffectsState.hasRedemptionMark(victim) && !isBossMob(victim)) {
+            if (isBossMob(victim)) {
+                // BOSS（末影龙 / 凋灵 / 本模组的中立 boss）：不打印记，也绝不走"真伤 + 兜底"那一条 ——
+                // 那条兜底会与只接受玩家来源的 DivineBoss.hurt 形成「事件 → hurt → 事件」的无限递归并崩服。
+                // 顺手清掉旧存档里被误加的印记与"生命上限锁 100"。
+                clearBossMark(victim);
+            } else if (CuriosEffectsState.hasRedemptionMark(victim)) {
                 // 常驻（不受 C 键影响）：对带救赎印记生物 → 无视护甲/免伤真伤
                 // BOSS 例外：它们的 hurt 覆写不接受无来源的真伤，取消普通伤害会让它们彻底打不动
                 event.setCanceled(true);
@@ -578,9 +583,8 @@ public final class CuriosEffects {
                 }
                 return;
             }
-            // 未带印记：仅当「救赎之击」开启（C 键）时改为回满血；关闭则正常造成伤害
-            // BOSS 例外：把 BOSS 治满血等于让它无敌，故不适用
-            if (!isBossMob(victim) && CuriosEffectsState.respawnToggle(attacker)) {
+            // 未带印记（且不是 BOSS）：仅当「救赎之击」开启（C 键）时改为回满血；关闭则正常造成伤害
+            else if (CuriosEffectsState.respawnToggle(attacker)) {
                 event.setCanceled(true);
                 victim.setHealth(victim.getMaxHealth());
             }
@@ -753,9 +757,22 @@ public final class CuriosEffects {
      * 因此对 BOSS 一律跳过印记流程，让其按原版普通伤害结算
      * （与 {@code BeastEffects} 里"对末影龙等 BOSS 走普通伤害"的处理保持一致）。
      */
+    /**
+     * 是否需要走"BOSS 级例外"（末影龙 / 凋灵，以及<b>本模组自己加的三个中立 boss</b>）。
+     *
+     * <p>两类 BOSS 的 {@code hurt} 覆写都不接受"无实体来源"的真伤
+     * （{@code generic_kill} / {@code fell_out_of_world}），因此对它们一律跳过印记流程，
+     * 让其按原版普通伤害结算（与 {@code BeastEffects} 里"对末影龙等 BOSS 走普通伤害"一致）。
+     *
+     * <p>⚠ <b>自己的 boss 必须算进来，否则会崩游戏</b>：给中立 boss 打上救赎印记后，
+     * "无来源真伤无效 → 兜底退回一段玩家攻击伤害"这条兜底会与
+     * {@code DivineBoss.hurt}（只接受玩家来源）形成
+     * 「攻击事件 → 再 hurt → 再触发攻击事件 → 再兜底」的无限递归 → StackOverflow 崩服。
+     */
     private static boolean isBossMob(LivingEntity entity) {
         return entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
-                || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss;
+                || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss
+                || entity instanceof com.divinebeast.divinebeast.boss.DivineBoss;
     }
 
     /** 清掉 BOSS 身上被误加的救赎印记与"生命上限锁 100"修饰符（修复旧存档里已被打上印记的龙/凋灵） */
