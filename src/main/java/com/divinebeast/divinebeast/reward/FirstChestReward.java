@@ -1,5 +1,6 @@
 package com.divinebeast.divinebeast.reward;
 
+import com.divinebeast.divinebeast.CompatChecks;
 import com.divinebeast.divinebeast.item.ModItems;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -20,6 +21,9 @@ import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 /**
  * 新手礼盒：每个玩家（每个存档）打开的第一个"箱子类容器"（箱子/陷阱箱/木桶/潜影盒/末影箱）
  * 会在其中生成 『祂』 与 『兽』 各一件；容器满时掉落在箱子前。仅服务器侧生效。
+ *
+ * <p><b>装了车万女仆（touhou_little_maid）时各给两份</b> —— 一份自己戴，另一份可以给女仆戴
+ * （女仆不经历证悟，戴上就是救赎形态）。
  *
  * <p>感知/意识/反叛 的"分维度首箱"另有门槛：必须已装备『祂者初』（fragmentGate，由 Curios
  * 分支注入 AscensionEffects.wearingHeFirst），未装备时打开箱子不会消耗该维度首箱标记。
@@ -71,14 +75,21 @@ public final class FirstChestReward {
         if (!tag.getBoolean(TAG_CLAIMED)) {
             tag.putBoolean(TAG_CLAIMED, true);
 
-            // 『祂』『兽』自带绑定诅咒
-            ItemStack deity = new ItemStack(ModItems.DEITY.get());
-            ItemStack beast = new ItemStack(ModItems.BEAST.get());
-            deity.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
-            beast.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+            // 装了车万女仆时各给两份：一份自己戴，另一份可以给女仆戴
+            int copies = CompatChecks.maidLoaded() ? 2 : 1;
+            ItemStack[] gifts = new ItemStack[copies * 2];
+            for (int i = 0; i < copies; i++) {
+                // 『祂』『兽』自带绑定诅咒
+                ItemStack deity = new ItemStack(ModItems.DEITY.get());
+                ItemStack beast = new ItemStack(ModItems.BEAST.get());
+                deity.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+                beast.enchant(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE, 1);
+                gifts[i * 2] = deity;
+                gifts[i * 2 + 1] = beast;
+            }
 
             boolean missed = false;
-            for (ItemStack stack : new ItemStack[]{deity, beast}) {
+            for (ItemStack stack : gifts) {
                 if (!addToChest(chest, stack)) {
                     missed = true;
                     dropNear(player, stack);
