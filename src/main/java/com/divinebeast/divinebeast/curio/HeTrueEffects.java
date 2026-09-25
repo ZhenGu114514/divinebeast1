@@ -1,5 +1,6 @@
 package com.divinebeast.divinebeast.curio;
 
+import com.divinebeast.divinebeast.item.ModItems;
 import com.divinebeast.divinebeast.net.CuriosEffectsState;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
