@@ -4,7 +4,7 @@ license = "All rights reserved"
 
 [[mods]]
 modId = "divinebeast"
-version = "1.7.16"
+version = "1.7.17"
 displayName = "Divine & Beast 祂"
 authors = "divinebeast"
 description = """
@@ -14,7 +14,7 @@ description = """
 · 证悟之路：祂者初 → 救赎 → 祂者极 → 本心 → 真者祂（终极形态）
 · 轮回之路：至高 → 智慧 → 生命 → 混沌 → 自·我（终极形态）
 · 途中死亡会弹出「证悟抉择」，由你自己决定走上哪一条路
-· 终极形态拥有大量可随时开关的权能。默认键位：C 救赎之击 / X 神行移速 /
+· 终极形态拥有大量可随时开关的权能。默认键位：C 救赎形态 开关 / X 神行移速 /
   V 领域与真伤 / Z 脑后星环（可在 选项 → 控制 → 祂 · 兽 中修改）
 · 真者祂：创造式飞行、免疫虚空与 /kill、攻击附加真伤与虚空伤害、光之领域范围伤害、
   脑后星环、万法附魔、蹈水履火（在水与岩浆中视野不受遮挡且移速不降低）等
@@ -27,7 +27,8 @@ description = """
 可选：安装 FTB Quests 后会自动向任务书注入本模组的饰品图鉴章节（含按键说明与注意事项）。
 可选：安装车万女仆后，女仆无需证悟便直接拥有『祂』『兽』『真者祂』饰品栏；两件诅咒装备在女仆栏中
 直接按救赎 / 拯救形态生效（不吃任何诅咒），并让女仆获得对应权能 —— 但女仆的一切能力都不会伤到玩家。
-（模组列表里可配置：真伤 / 神威·诛灭 / 祂·救赎的不被选为目标。）
+（模组列表里可配置：真伤 / 神威·诛灭。「祂·救赎」的不被选为目标与该形态的其余效果一起
+由上面的 C 键统一开关。）
 
 A Curios-API trinket mod for Forge 1.20.1. Two core trinkets — The Divine and
 The Beast — each paired with 12 Moments / 12 Laws that lift its curses one by one.
@@ -37,7 +38,7 @@ The Beast — each paired with 12 Moments / 12 Laws that lift its curses one by 
 · Cycle path: Supreme → Wisdom → Life → Chaos → Self (final form)
 · Dying along the way opens an ascension choice that decides which path you walk
 · Final forms grant many powers you can toggle at any time. Default keys:
-  C Redemption Strike / X Divine Stride / V Light Domain & True Damage /
+  C Redemption Form toggle / X Divine Stride / V Light Domain & True Damage /
   Z Orbit Aura (rebindable in Options → Controls → He · Beast)
 · True Divine: creative flight, immunity to the void and to /kill, extra true and
   void damage on every hit, Light Domain area damage, orbit aura, divine
@@ -56,7 +57,8 @@ injects its trinket guide chapter into the quest book (key toggles and warnings 
 Optional: with Touhou Little Maid installed, maids skip the ascension path and directly gain the
 Divine / Beast / True Divine trinket slots. The two cursed trinkets act as their redeemed forms in
 a maid's slot (no curses at all) and grant her the matching powers — none of which can hurt players.
-(The mod list config exposes: true damage / Omnipotent Execution / Redemption no-targeting.)
+(The mod list config exposes: true damage / Omnipotent Execution. Redemption's no-targeting
+effect is toggled together with the rest of that form by the C key above.)
 """
 
 # 说明：Curios 为可选前置 —— 所有 Curios API 引用都隔离在由 CompatChecks 门控的类中，

@@ -1,19 +1,17 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "equipment",
-  "pattern": [
-    "X",
-    "X",
-    "#"
-  ],
-  "key": {
-    "X": {
-      "item": "divinebeast:three_phase_ingot"
+  "ingredients": [
+    {
+      "item": "divinebeast:self_sword"
     },
-    "#": {
-      "item": "minecraft:stick"
+    {
+      "item": "divinebeast:beast_sword"
+    },
+    {
+      "item": "divinebeast:he_sword"
     }
-  },
+  ],
   "result": {
     "item": "divinebeast:three_phase_sword"
   }

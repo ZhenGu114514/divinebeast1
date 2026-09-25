@@ -150,12 +150,14 @@ public final class ModItems {
     public static final RegistryObject<Item> HE_INGOT =
             ITEMS.register("he_ingot", () -> new Item(new Item.Properties()));
 
+    // 伤害数值 = 1（玩家空手基础）+ 材质加成（铁 2 / 金 1 / 下界合金 4）+ 这里的 attackDamageModifier
+    // 因此 我 111 / 兽 222 / 祂 333 / 三相 999 对应的 modifier 分别是 108 / 220 / 328 / 994。
     public static final RegistryObject<Item> SELF_SWORD = ITEMS.register("self_sword",
-            () -> new SwordItem(Tiers.IRON, 3, -2.4F, new Item.Properties()));
+            () -> new SwordItem(Tiers.IRON, 108, -2.4F, new Item.Properties()));
     public static final RegistryObject<Item> BEAST_SWORD = ITEMS.register("beast_sword",
-            () -> new SwordItem(Tiers.GOLD, 3, -2.4F, new Item.Properties()));
+            () -> new SwordItem(Tiers.GOLD, 220, -2.4F, new Item.Properties()));
     public static final RegistryObject<Item> HE_SWORD = ITEMS.register("he_sword",
-            () -> new SwordItem(Tiers.NETHERITE, 3, -2.4F, new Item.Properties()));
+            () -> new SwordItem(Tiers.NETHERITE, 328, -2.4F, new Item.Properties()));
 
     public static final RegistryObject<Item> SELF_HELMET = ITEMS.register("self_helmet",
             () -> new ArmorItem(ModArmorMaterials.SELF, ArmorItem.Type.HELMET, new Item.Properties()));
@@ -191,7 +193,7 @@ public final class ModItems {
     public static final RegistryObject<Item> THREE_PHASE_INGOT =
             ITEMS.register("three_phase_ingot", () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> THREE_PHASE_SWORD = ITEMS.register("three_phase_sword",
-            () -> new SwordItem(Tiers.NETHERITE, 5, -2.2F, new Item.Properties()));
+            () -> new SwordItem(Tiers.NETHERITE, 994, -2.2F, new Item.Properties()));   // 999 伤害
     public static final RegistryObject<Item> THREE_PHASE_HELMET = ITEMS.register("three_phase_helmet",
             () -> new ArmorItem(ModArmorMaterials.THREE_PHASE, ArmorItem.Type.HELMET, new Item.Properties()));
     public static final RegistryObject<Item> THREE_PHASE_CHESTPLATE = ITEMS.register("three_phase_chestplate",

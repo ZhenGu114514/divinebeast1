@@ -78,7 +78,11 @@ public final class HeTrueEffects {
     private static final UUID KNOCKBACK_RES_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b4");
     private static final UUID MAX_HEALTH_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b5");
     private static final UUID FLYING_SPEED_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b6");
-    /** 万藏：通用(curio)槽固定修饰符 UUID */
+    /**
+     * 万藏：通用(curio)槽固定修饰符 UUID —— <b>本类已不再使用</b>（槽位现由
+     * {@code CuriosEffects.grantHoardSlots} 在解锁「真者祂饰品栏」时一次性、常驻授予，用的是同一个 UUID，
+     * 因此老存档不会叠加）。保留此常量仅作记载，便于对照老存档里的修饰符来源。
+     */
     private static final UUID CURIO_HOARD_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b7");
     /** 神威（由 76 旧伤 改写）：攻击力「一不可说不可转」的固定修饰符 UUID */
     private static final UUID MIGHT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b8");
@@ -275,7 +279,9 @@ public final class HeTrueEffects {
                 "divinebeast_he_true_maxhp", 2000.0D);
         // 蹈水履火（改写）：水/岩浆中视野无遮挡、移速不降低 —— 全客户端实现，见 HeTrueLiquidClient
         // 万藏：动态通用(curio)槽 = 99 + 已装通用饰品件数
-        syncCurioHoard(player);
+        // 万藏：动态通用(curio)槽 +99 —— 已改为在解锁「真者祂饰品栏」时一次性授予（见 CuriosEffects）
+        // 「饰品效果翻倍」：把身上其它饰品的属性修饰符各再复制一份
+        syncCurioDoubling(player);
 
         // 以下按各自周期执行。原先这里是一个统一的 `if (tickCount % 20 != 0) return;`，
         // 会把周期更细的磁界（%10）一并吞掉，使其实际只每 20 tick 跑一次。
@@ -485,42 +491,158 @@ public final class HeTrueEffects {
      */
 
     /**
-     * 万藏：固定为通用(curio)槽 +99 个（不再随已装件数增长）。
-     * 无状态自愈式：按 handler 实际修饰符状态增删（幂等），不依赖内存记忆，
-     * 因此跨维度/重生后 transient 修饰符被 Curios 清除时，下个 tick 会自动补回。
+     * 「真者祂 · 所有装备在身上的饰品效果翻倍」。
+     *
+     * <p>做法：遍历身上<b>除真者祂以外</b>的全部饰品，把它们提供的属性修饰符<b>再各加一份</b>
+     * （下一轮先精确收回上一轮加的那份，再按当前佩戴情况重加，幂等且脱下即还原）。
+     * 这样其它模组的饰品、以及本模组饰品上的属性部分都会翻倍；靠代码实现的行为类效果
+     * （诅咒 / 法则 / 权能计数等）不在"属性翻倍"范围内。
+     *
+     * <p>注意：{@code +99 通用饰品栏}（万藏）已经<b>不再</b>由这里动态增删 —— 改成在获得
+     * 「真者祂饰品栏」时一次性授予并常驻，避免"界面开着时收回槽位"把客户端容器槽数改崩。
      */
-    private static void syncCurioHoard(Player player) {
-        // 有外部容器/界面打开时暂不加槽：+99 会改变容器槽数，而客户端已打开的菜单
-        // 仍是旧槽数 → ClientboundContainerSetContentPacket 在客户端越界报错。
-        // 关掉容器后下个 tick 自会补上。
-        if (player.containerMenu != player.inventoryMenu) {
-            return;
-        }
+    private static void syncCurioDoubling(Player player) {
+        // 【重要】只在"身上其它饰品发生变化"或"上一轮的复制修饰符已丢失（死亡重生、被其它模组清掉）"
+        // 时才重建。本方法每 tick 都会跑，若无条件"先清后加"，就会每 tick 重算属性并反复向客户端
+        // 同步属性包（真者祂身上饰品一多尤其明显）。
         java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
                 top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).resolve();
         if (optional.isEmpty()) {
+            return;   // 暂时取不到 Curios 容器：保留现状，下个 tick 再收敛
+        }
+        long signature = curioSignature(optional.get());
+        Long lastSignature = DOUBLED_SIGNATURE.get(player.getUUID());
+        if (lastSignature != null && lastSignature == signature && doublingIntact(player)) {
             return;
         }
-        top.theillusivec4.curios.api.type.capability.ICuriosItemHandler handler = optional.get();
-        // 若实体尚未分配通用槽（entities/player.json 缺 curio），则本效果无意义
-        java.util.Optional<top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler> shOpt =
-                handler.getStacksHandler("curio");
-        if (shOpt.isEmpty()) {
-            return;
+        clearCurioDoubling(player);
+        java.util.List<DoubledModifier> added = new java.util.ArrayList<>();
+        int counter = 0;
+        for (java.util.Map.Entry<String, top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler> entry
+                : optional.get().getCurios().entrySet()) {
+            String slotId = entry.getKey();
+            net.minecraftforge.items.IItemHandlerModifiable stacks = entry.getValue().getStacks();
+            if (stacks == null) {
+                continue;
+            }
+            for (int i = 0; i < stacks.getSlots(); i++) {
+                ItemStack stack = stacks.getStackInSlot(i);
+                if (stack.isEmpty() || stack.is(ModItems.HE_TRUE.get())) {
+                    continue;
+                }
+                counter = doubleOneStack(player, stack, slotId, i, counter, added);
+            }
         }
-        int target = 99;
-        // 已是 +99 则不再重复写入（避免每 tick 触发槽位更新/容器同步）
-        if (hasSlotModifier(handler, "curio", CURIO_HOARD_MOD, (double) target)) {
-            return;
-        }
-        com.google.common.collect.Multimap<String, AttributeModifier> map =
-                com.google.common.collect.LinkedHashMultimap.create();
-        map.put("curio", new AttributeModifier(CURIO_HOARD_MOD, "divinebeast_he_true_curio",
-                target, AttributeModifier.Operation.ADDITION));
-        handler.addTransientSlotModifiers(map);
+        // 即使这一轮什么都没加（身上只有『真者祂』），也要落一条空记录：
+        // doublingIntact 以"有没有记录"判断上一轮是否跑过，否则会退化成每 tick 重建。
+        DOUBLED.put(player.getUUID(), added);
+        DOUBLED_SIGNATURE.put(player.getUUID(), signature);
     }
 
-    /** 该槽位上是否已存在我们用 modUuid 施加、数值为 amount 的修饰符（查询失败按"不存在"处理）。 */
+    /** 身上全部饰品（槽位 + 序号 + 物品）的指纹；与上一轮相同即无需重建翻倍修饰符。 */
+    private static long curioSignature(
+            top.theillusivec4.curios.api.type.capability.ICuriosItemHandler handler) {
+        long hash = 1125899906842597L;
+        for (java.util.Map.Entry<String, top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler> entry
+                : handler.getCurios().entrySet()) {
+            hash = hash * 31L + entry.getKey().hashCode();
+            net.minecraftforge.items.IItemHandlerModifiable stacks = entry.getValue().getStacks();
+            if (stacks == null) {
+                continue;
+            }
+            for (int i = 0; i < stacks.getSlots(); i++) {
+                ItemStack stack = stacks.getStackInSlot(i);
+                hash = hash * 31L + (stack.isEmpty() ? 0
+                        : net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(stack.getItem()));
+            }
+        }
+        return hash;
+    }
+
+    /** 上一轮加上的复制修饰符是否仍然全部挂在玩家身上（死亡重生会全部丢失）。 */
+    private static boolean doublingIntact(Player player) {
+        java.util.List<DoubledModifier> old = DOUBLED.get(player.getUUID());
+        if (old == null) {
+            return false;   // 上一轮没跑过 / 已被 clearCurioDoubling 清空 → 需要重建
+        }
+        for (DoubledModifier doubled : old) {
+            AttributeInstance instance = player.getAttribute(doubled.attribute());
+            if (instance == null || instance.getModifier(doubled.uuid()) == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** 把单个饰品提供的属性修饰符复制一份加到玩家身上；返回更新后的计数器。 */
+    private static int doubleOneStack(Player player, ItemStack stack, String slotId, int index,
+                                      int counter, java.util.List<DoubledModifier> added) {
+        // 单一来源：Curios 自己的 getAttributeModifiers —— 它同时涵盖
+        // 「物品实现 ICurio#getAttributeModifiers 声明的属性」与「写进物品 NBT 的属性」
+        // （CuriosApi.addModifier(...) 那条路），正是"这件饰品实际提供了什么属性"。
+        // 刻意不去另外读 ItemStack#getAttributeModifiers(MAINHAND)：那会让同时用两种方式
+        // 声明的饰品被算两遍（本来该 ×2 的变成 ×4）。
+        com.google.common.collect.Multimap<net.minecraft.world.entity.ai.attributes.Attribute,
+                AttributeModifier> source;
+        try {
+            top.theillusivec4.curios.api.SlotContext context =
+                    new top.theillusivec4.curios.api.SlotContext(slotId, player, index, false, true);
+            source = top.theillusivec4.curios.api.CuriosApi
+                    .getAttributeModifiers(context, java.util.UUID.randomUUID(), stack);
+        } catch (Throwable ignored) {
+            return counter;   // 取不到这件饰品的属性就跳过它（不影响其它饰品）
+        }
+        if (source == null) {
+            return counter;
+        }
+
+        for (java.util.Map.Entry<net.minecraft.world.entity.ai.attributes.Attribute, AttributeModifier> e
+                : source.entries()) {
+            AttributeModifier modifier = e.getValue();
+            if (modifier == null || modifier.getName().startsWith("divinebeast_")) {
+                continue;   // 跳过本模组自己的内部修饰符
+            }
+            AttributeInstance instance = player.getAttribute(e.getKey());
+            if (instance == null) {
+                continue;   // 例如 Curios 的"槽位"伪属性：玩家身上没有这条属性，跳过
+            }
+            java.util.UUID id = new java.util.UUID(0x444F55424C450000L, counter++);
+            try {
+                instance.addTransientModifier(new AttributeModifier(id,
+                        "divinebeast_curio_double_" + counter, modifier.getAmount(),
+                        modifier.getOperation()));
+            } catch (Throwable ignored) {
+                continue;   // 极端情况下同 UUID 已在（不该发生）：跳过这一条，绝不让异常冒到 tick 循环
+            }
+            added.add(new DoubledModifier(e.getKey(), id));
+        }
+        return counter;
+    }
+
+    /** 收回本引擎为"饰品效果翻倍"添加的全部复制修饰符（脱下真者祂 / 退出形态时调用）。 */
+    private static void clearCurioDoubling(Player player) {
+        java.util.List<DoubledModifier> old = DOUBLED.remove(player.getUUID());
+        if (old == null) {
+            return;
+        }
+        for (DoubledModifier doubled : old) {
+            AttributeInstance instance = player.getAttribute(doubled.attribute());
+            if (instance != null) {
+                instance.removeModifier(doubled.uuid());
+            }
+        }
+    }
+
+    /** 「饰品效果翻倍」记下的一条复制修饰符（属性 + UUID，方便精确收回）。 */
+    private record DoubledModifier(net.minecraft.world.entity.ai.attributes.Attribute attribute,
+                                   java.util.UUID uuid) {
+    }
+
+    /** 玩家 → 本轮为"饰品效果翻倍"加上的复制修饰符 */
+    private static final java.util.Map<java.util.UUID, java.util.List<DoubledModifier>> DOUBLED =
+            new java.util.HashMap<>();
+    /** 玩家 → 上一轮做"饰品效果翻倍"时身上饰品的指纹（用来判断是否需要重建） */
+    private static final java.util.Map<java.util.UUID, Long> DOUBLED_SIGNATURE = new java.util.HashMap<>();
     private static boolean hasSlotModifier(
             top.theillusivec4.curios.api.type.capability.ICuriosItemHandler handler,
             String slotId, UUID modUuid, double amount) {
@@ -577,16 +699,8 @@ public final class HeTrueEffects {
         }
         player.setAbsorptionAmount(0.0F);
         SEC_DAMAGE.remove(player.getUUID()); // 太初每秒伤害额度随形态结束重置
-        // 回收万藏：移除动态通用槽修饰符
-        java.util.Optional<top.theillusivec4.curios.api.type.capability.ICuriosItemHandler> optional =
-                top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).resolve();
-        if (optional.isPresent()) {
-            com.google.common.collect.Multimap<String, AttributeModifier> map =
-                    com.google.common.collect.LinkedHashMultimap.create();
-            map.put("curio", new AttributeModifier(CURIO_HOARD_MOD, "divinebeast_he_true_curio",
-                    0.0D, AttributeModifier.Operation.ADDITION));
-            optional.get().removeSlotModifiers(map);
-        }
+        // 收回"饰品效果翻倍"加上的全部复制修饰符
+        clearCurioDoubling(player);
     }
 
     private static void repairAll(Player player) {

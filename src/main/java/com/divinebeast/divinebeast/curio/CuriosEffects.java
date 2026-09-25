@@ -83,6 +83,10 @@ public final class CuriosEffects {
     private static final UUID HE_TRUE_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a3");
     private static final UUID REDEMPTION_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a4");
     private static final UUID TRUEHEART_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000a5");
+    /** 万藏：通用(curio)槽 +99 的修饰符 UUID（沿用旧 HeTrueEffects 里的值，老存档不会重复叠加） */
+    private static final UUID CURIO_HOARD_SLOT_MOD = UUID.fromString("d1e6be4d-6f6c-4f6b-a4b1-0000000000b7");
+    /** 万藏：解锁「真者祂饰品栏」时通用饰品栏增加的格数 */
+    private static final int HOARD_SLOTS = 99;
     private static final String ADV_REDEMPTION_TAG = "divinebeast.adv.deity_redemption";
 
     // 效果索引（与 MOMENT_SLOTS 顺序一致）
@@ -867,6 +871,33 @@ public final class CuriosEffects {
         syncOneSlot(handler, "he_extreme", stage == 2, HE_EXTREME_SLOT_MOD);
         syncOneSlot(handler, "trueheart", AscensionEffects.wearingHeExtreme(player), TRUEHEART_SLOT_MOD);
         syncOneSlot(handler, "he_true", stage == 3, HE_TRUE_SLOT_MOD);
+        // 万藏：解锁「真者祂饰品栏」的同时，一次性 +99 个通用(curio)槽 —— 且此后【常驻】，
+        // 不再随「真者祂」是否佩戴而收回（收回槽位会在饰品界面开着时把客户端容器槽数改崩）。
+        if (stage == 3) {
+            grantHoardSlots(handler);
+        }
+    }
+
+    /**
+     * 万藏：通用(curio)饰品栏 +99 格（幂等：已有这条修饰符就直接返回，不反复触发槽位更新）。
+     *
+     * <p>只在证悟阶段 3（解锁「真者祂饰品栏」）时授予一次，之后永不收回：
+     * 动态收回槽位会让"界面已打开"的客户端容器槽数与服务端不一致，
+     * 触发 {@code AbstractContainerMenu.getSlot()} 越界崩溃（创造模式取下『真者祂』时必现）。
+     */
+    private static void grantHoardSlots(ICuriosItemHandler handler) {
+        if (!handler.getCurios().containsKey("curio")) {
+            return;   // 数据包没有通用饰品栏（curio），本效果无意义
+        }
+        if (hasSlotModifier(handler, "curio", CURIO_HOARD_SLOT_MOD, (double) HOARD_SLOTS)) {
+            return;
+        }
+        com.google.common.collect.Multimap<String, AttributeModifier> map =
+                com.google.common.collect.LinkedHashMultimap.create();
+        map.put("curio", new AttributeModifier(CURIO_HOARD_SLOT_MOD, "divinebeast_hoard_curio",
+                (double) HOARD_SLOTS, AttributeModifier.Operation.ADDITION));
+        handler.addTransientSlotModifiers(map);
+        LOGGER.info("[divinebeast] 万藏：通用饰品栏 +{} 格（解锁『真者祂饰品栏』时永久授予）", HOARD_SLOTS);
     }
 
     private static void syncOneSlot(ICuriosItemHandler handler, String slotId, boolean wanted,

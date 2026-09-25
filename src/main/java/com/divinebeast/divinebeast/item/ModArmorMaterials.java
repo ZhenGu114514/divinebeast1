@@ -19,24 +19,36 @@ import java.util.function.Supplier;
  */
 public enum ModArmorMaterials implements ArmorMaterial {
 
-    /** 『我』：铁档（耐久 15 倍，防御 2/5/6/2） */
-    SELF("divinebeast:self", 15, 2, 5, 6, 2, 14,
-            SoundEvents.ARMOR_EQUIP_IRON, 0.0F, 0.0F,
+    /**
+     * 四件套的<b>护甲值总和</b> 与 <b>韧性总和</b>（1.20.1 里韧性按"每件都加一遍"结算，故总和 = 单件 ×4）：
+     * <pre>
+     *   我  = 66：单件 鞋 10 / 腿 23 / 胸 20 / 头 13，韧性单件 16.5
+     *   兽  = 77：单件 鞋 12 / 腿 27 / 胸 23 / 头 15，韧性单件 19.25
+     *   祂  = 88：单件 鞋 13 / 腿 31 / 胸 26 / 头 18，韧性单件 22.0
+     *   三相 = 99：单件 鞋 15 / 腿 35 / 胸 30 / 头 19，韧性单件 24.75
+     * </pre>
+     * ⚠ 注意：原版 {@code generic.armor} 属性的取值上限是 30，因此实际减伤仍只按 30 点结算
+     * （护甲条显示满格），超出的部分只在物品提示的"单件护甲值"里可见。
+     */
+
+    /** 『我』：四件套护甲 66 / 韧性 66 */
+    SELF("divinebeast:self", 15, 10, 23, 20, 13, 14,
+            SoundEvents.ARMOR_EQUIP_IRON, 16.5F, 0.0F,
             () -> Ingredient.of(ModItems.SELF_INGOT.get())),
 
-    /** 『兽』：金档（耐久 7 倍，防御 1/3/5/2，附魔性最高） */
-    BEAST("divinebeast:beast", 7, 1, 3, 5, 2, 25,
-            SoundEvents.ARMOR_EQUIP_GOLD, 0.0F, 0.0F,
+    /** 『兽』：四件套护甲 77 / 韧性 77 */
+    BEAST("divinebeast:beast", 7, 12, 27, 23, 15, 25,
+            SoundEvents.ARMOR_EQUIP_GOLD, 19.25F, 0.0F,
             () -> Ingredient.of(ModItems.BEAST_INGOT.get())),
 
-    /** 『祂』：下界合金档（耐久 37 倍，防御 3/6/8/3，韧性与击退抗性） */
-    HE("divinebeast:he", 37, 3, 6, 8, 3, 15,
-            SoundEvents.ARMOR_EQUIP_NETHERITE, 3.0F, 0.1F,
+    /** 『祂』：四件套护甲 88 / 韧性 88 */
+    HE("divinebeast:he", 37, 13, 31, 26, 18, 15,
+            SoundEvents.ARMOR_EQUIP_NETHERITE, 22.0F, 0.1F,
             () -> Ingredient.of(ModItems.HE_INGOT.get())),
 
-    /** 『三相』：三套效果合一（数值取最高档，韧性与击退抗性再上一级） */
-    THREE_PHASE("divinebeast:three_phase", 45, 4, 7, 9, 4, 20,
-            SoundEvents.ARMOR_EQUIP_NETHERITE, 4.0F, 0.15F,
+    /** 『三相』：三套效果合一，四件套护甲 99 / 韧性 99 */
+    THREE_PHASE("divinebeast:three_phase", 45, 15, 35, 30, 19, 20,
+            SoundEvents.ARMOR_EQUIP_NETHERITE, 24.75F, 0.15F,
             () -> Ingredient.of(ModItems.THREE_PHASE_INGOT.get()));
 
     private final String name;

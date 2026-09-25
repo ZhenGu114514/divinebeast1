@@ -208,20 +208,27 @@ public final class CuriosCompat {
         @Override
         public boolean canUnequip(SlotContext slotContext) {
             // 绑定诅咒：『祂』『兽』以及证悟链（祂者初/祂者极/救赎/本心/真者祂）
-            // 一经佩戴无法从饰品栏卸下。
+            // 一经佩戴无法从饰品栏卸下 —— 【创造模式除外】。
             //
-            // ⚠ 已回退（1.6.85 曾短暂开放"创造模式可卸下"，导致崩溃）：
-            // 本模组的槽位是"佩戴核心饰品时动态 +1、卸下即收回"的。在**饰品栏界面开着**
-            // 的时候卸下真者祂，会同时把 he_true 槽收回 → 界面（以及 JEI 缓存的界面区域数据）
-            // 拿到过期的槽位布局 → 崩在 JEI 的界面区域计算里
-            // （crash: mezz.jei.gui.events.GuiEventHandler.onDrawBackgroundPost）。
-            // 该路径在开放卸下之前根本走不到，因此恢复"一律不可卸下"即可消除崩溃。
-            // 若日后确实需要创造模式下可卸下，必须改为"界面关闭后再回收槽位"或走服务端指令。
+            // ⚠ 历史：1.6.85 曾开放"创造模式可卸下"导致崩溃（crash:
+            // mezz.jei.gui.events.GuiEventHandler.onDrawBackgroundPost）。当时崩溃的根因是
+            // 本模组的槽位属于"佩戴核心饰品时动态 +1、卸下即收回"，在饰品栏界面开着的
+            // 时候卸下真者祂会把 he_true 槽一起收回 → 界面/JEI 拿到过期的槽位布局。
             //
+            // ✅ 现在这条路径已经不存在了：槽位解锁改为**常驻**（he_true 槽跟随证悟阶段
+            // stage==3、通用(curio)槽 +99 也在解锁时一次性永久授予，二者都不再随佩戴状态收回），
+            // 卸下『真者祂』不会改变任何槽位数量，因此创造模式下可以安全取下。
+            // 生存模式仍然一律锁死（绑定诅咒的设计），女仆（常驻槽位）则始终可取下。
+            if (slotContext.entity() == null) {
+                return false;   // 提示栏等无实体上下文：按"锁着"处理，避免误判
+            }
+            if (slotContext.entity() instanceof Player player) {
+                return player.isCreative();
+            }
             // 非玩家佩戴者（目前只有车万女仆的 Curios 饰品栏）不锁：
             // 女仆用的是**常驻槽位**（data/divinebeast/curios/slots/he_true_maid.json 固定 size 1），
-            // 取下物品不会改变槽位数量，不存在上面那条崩溃路径；允许取下也方便把饰品换给别的女仆。
-            return slotContext.entity() != null && !(slotContext.entity() instanceof Player);
+            // 取下物品不会改变槽位数量；允许取下也方便把饰品换给别的女仆。
+            return true;
         }
 
         @Override
