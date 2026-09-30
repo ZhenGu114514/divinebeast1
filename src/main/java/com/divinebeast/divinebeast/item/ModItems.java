@@ -13,7 +13,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.PickaxeItem;
 import net.minecraft.world.item.ShovelItem;
 import net.minecraft.world.item.SwordItem;
-import net.minecraft.world.item.Tiers;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
@@ -150,14 +149,15 @@ public final class ModItems {
     public static final RegistryObject<Item> HE_INGOT =
             ITEMS.register("he_ingot", () -> new Item(new Item.Properties()));
 
-    // 伤害数值 = 1（玩家空手基础）+ 材质加成（铁 2 / 金 1 / 下界合金 4）+ 这里的 attackDamageModifier
+    // 伤害数值 = 1（玩家空手基础）+ 材质加成（我 2 / 兽 1 / 祂 4 / 三相 4，见 ModTiers）+ 这里的 attackDamageModifier
     // 因此 我 111 / 兽 222 / 祂 333 / 三相 999 对应的 modifier 分别是 108 / 220 / 328 / 994。
+    // 武器 / 工具全部改用自有材质 ModTiers：耐久统一 10000、挖掘等级统一 4（原版最高）。
     public static final RegistryObject<Item> SELF_SWORD = ITEMS.register("self_sword",
-            () -> new SwordItem(Tiers.IRON, 108, -2.4F, new Item.Properties()));
+            () -> new SwordItem(ModTiers.SELF, 108, -2.4F, new Item.Properties()));
     public static final RegistryObject<Item> BEAST_SWORD = ITEMS.register("beast_sword",
-            () -> new SwordItem(Tiers.GOLD, 220, -2.4F, new Item.Properties()));
+            () -> new SwordItem(ModTiers.BEAST, 220, -2.4F, new Item.Properties()));
     public static final RegistryObject<Item> HE_SWORD = ITEMS.register("he_sword",
-            () -> new SwordItem(Tiers.NETHERITE, 328, -2.4F, new Item.Properties()));
+            () -> new SwordItem(ModTiers.HE, 328, -2.4F, new Item.Properties()));
 
     public static final RegistryObject<Item> SELF_HELMET = ITEMS.register("self_helmet",
             () -> new ArmorItem(ModArmorMaterials.SELF, ArmorItem.Type.HELMET, new Item.Properties()));
@@ -193,7 +193,7 @@ public final class ModItems {
     public static final RegistryObject<Item> THREE_PHASE_INGOT =
             ITEMS.register("three_phase_ingot", () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> THREE_PHASE_SWORD = ITEMS.register("three_phase_sword",
-            () -> new SwordItem(Tiers.NETHERITE, 994, -2.2F, new Item.Properties()));   // 999 伤害
+            () -> new SwordItem(ModTiers.THREE_PHASE, 994, -2.2F, new Item.Properties()));   // 999 伤害
     public static final RegistryObject<Item> THREE_PHASE_HELMET = ITEMS.register("three_phase_helmet",
             () -> new ArmorItem(ModArmorMaterials.THREE_PHASE, ArmorItem.Type.HELMET, new Item.Properties()));
     public static final RegistryObject<Item> THREE_PHASE_CHESTPLATE = ITEMS.register("three_phase_chestplate",
@@ -205,43 +205,43 @@ public final class ModItems {
 
     // 三相工具全套（自有材质：三色棱镜钢 + 三色光点）
     public static final RegistryObject<Item> THREE_PHASE_PICKAXE = ITEMS.register("three_phase_pickaxe",
-            () -> new PickaxeItem(Tiers.NETHERITE, 2, -2.8F, new Item.Properties()));
+            () -> new PickaxeItem(ModTiers.THREE_PHASE, 2, -2.8F, new Item.Properties()));
     public static final RegistryObject<Item> THREE_PHASE_AXE = ITEMS.register("three_phase_axe",
-            () -> new AxeItem(Tiers.NETHERITE, 7.0F, -3.0F, new Item.Properties()));
+            () -> new AxeItem(ModTiers.THREE_PHASE, 7.0F, -3.0F, new Item.Properties()));
     public static final RegistryObject<Item> THREE_PHASE_SHOVEL = ITEMS.register("three_phase_shovel",
-            () -> new ShovelItem(Tiers.NETHERITE, 2.5F, -3.0F, new Item.Properties()));
+            () -> new ShovelItem(ModTiers.THREE_PHASE, 2.5F, -3.0F, new Item.Properties()));
     public static final RegistryObject<Item> THREE_PHASE_HOE = ITEMS.register("three_phase_hoe",
-            () -> new HoeItem(Tiers.NETHERITE, -1, -1.0F, new Item.Properties()));
+            () -> new HoeItem(ModTiers.THREE_PHASE, -1, -1.0F, new Item.Properties()));
 
     // ------------------------------------------------------------------
     // 同名工具全套（镐 / 斧 / 锹 / 锄）—— 用各自的锭合成
     // ------------------------------------------------------------------
     public static final RegistryObject<Item> SELF_PICKAXE = ITEMS.register("self_pickaxe",
-            () -> new PickaxeItem(Tiers.IRON, 1, -2.8F, new Item.Properties()));
+            () -> new PickaxeItem(ModTiers.SELF, 1, -2.8F, new Item.Properties()));
     public static final RegistryObject<Item> SELF_AXE = ITEMS.register("self_axe",
-            () -> new AxeItem(Tiers.IRON, 6.0F, -3.0F, new Item.Properties()));
+            () -> new AxeItem(ModTiers.SELF, 6.0F, -3.0F, new Item.Properties()));
     public static final RegistryObject<Item> SELF_SHOVEL = ITEMS.register("self_shovel",
-            () -> new ShovelItem(Tiers.IRON, 1.5F, -3.0F, new Item.Properties()));
+            () -> new ShovelItem(ModTiers.SELF, 1.5F, -3.0F, new Item.Properties()));
     public static final RegistryObject<Item> SELF_HOE = ITEMS.register("self_hoe",
-            () -> new HoeItem(Tiers.IRON, -2, -1.0F, new Item.Properties()));
+            () -> new HoeItem(ModTiers.SELF, -2, -1.0F, new Item.Properties()));
 
     public static final RegistryObject<Item> BEAST_PICKAXE = ITEMS.register("beast_pickaxe",
-            () -> new PickaxeItem(Tiers.GOLD, 1, -2.8F, new Item.Properties()));
+            () -> new PickaxeItem(ModTiers.BEAST, 1, -2.8F, new Item.Properties()));
     public static final RegistryObject<Item> BEAST_AXE = ITEMS.register("beast_axe",
-            () -> new AxeItem(Tiers.GOLD, 6.0F, -3.0F, new Item.Properties()));
+            () -> new AxeItem(ModTiers.BEAST, 6.0F, -3.0F, new Item.Properties()));
     public static final RegistryObject<Item> BEAST_SHOVEL = ITEMS.register("beast_shovel",
-            () -> new ShovelItem(Tiers.GOLD, 1.5F, -3.0F, new Item.Properties()));
+            () -> new ShovelItem(ModTiers.BEAST, 1.5F, -3.0F, new Item.Properties()));
     public static final RegistryObject<Item> BEAST_HOE = ITEMS.register("beast_hoe",
-            () -> new HoeItem(Tiers.GOLD, -2, -1.0F, new Item.Properties()));
+            () -> new HoeItem(ModTiers.BEAST, -2, -1.0F, new Item.Properties()));
 
     public static final RegistryObject<Item> HE_PICKAXE = ITEMS.register("he_pickaxe",
-            () -> new PickaxeItem(Tiers.NETHERITE, 1, -2.8F, new Item.Properties()));
+            () -> new PickaxeItem(ModTiers.HE, 1, -2.8F, new Item.Properties()));
     public static final RegistryObject<Item> HE_AXE = ITEMS.register("he_axe",
-            () -> new AxeItem(Tiers.NETHERITE, 6.0F, -3.0F, new Item.Properties()));
+            () -> new AxeItem(ModTiers.HE, 6.0F, -3.0F, new Item.Properties()));
     public static final RegistryObject<Item> HE_SHOVEL = ITEMS.register("he_shovel",
-            () -> new ShovelItem(Tiers.NETHERITE, 1.5F, -3.0F, new Item.Properties()));
+            () -> new ShovelItem(ModTiers.HE, 1.5F, -3.0F, new Item.Properties()));
     public static final RegistryObject<Item> HE_HOE = ITEMS.register("he_hoe",
-            () -> new HoeItem(Tiers.NETHERITE, -2, -1.0F, new Item.Properties()));
+            () -> new HoeItem(ModTiers.HE, -2, -1.0F, new Item.Properties()));
 
     // ------------------------------------------------------------------
     // 建筑的台阶 / 楼梯 / 墙（三种材料各一套）

@@ -364,8 +364,26 @@ public final class BeastEffects {
 
         int layers = Math.min(SELF_LAYER_MAX, selfLayers(player));
         double bonus = 1.0D + layers * 0.1D;
-        applyMultiplier(player, Attributes.MAX_HEALTH, SELF_HEALTH_MOD, bonus);
-        applyMultiplier(player, Attributes.ATTACK_DAMAGE, SELF_ATTACK_MOD, bonus);
+        // 【BUGFIX 1.7.18】这里原先用的是"读当前数值 → 按倍率算出一段 ADDITION 再加回去"
+        // （applyMultiplier）。那种写法有致命的自反馈问题：
+        //
+        //   1) instance.getValue() 读到的**不只是自己的数值**，还包含别的系统刚加上的东西
+        //      （我·盔甲的每件 +20 生命、真者祂的 +2000、以及下面这条水位线补偿）；
+        //   2) 「不存在不存在时刻」的水位线（MomentEffects.lockToWatermark）也是"读当前值再补差值"，
+        //      而它的水位线取的是**历史最大值**。于是两边每 tick 轮流执行：
+        //        自·我：把（基础 + 水位线补偿）再乘一遍 → 数值暴涨
+        //        水位线：把暴涨后的值记成新的水位线 → 水位线也跟着涨
+        //      → 生命上限在两个数值之间无限来回跳，而且越跳越大（实测在 2 万与一个较低值之间跳动）。
+        //   3) 这个循环一旦被触发（例如临时脱下一件「我」甲、或真者祂形态切换导致数值回落，
+        //      使水位线补偿 delta ≠ 0）就再也不会自己停下来，必须重进存档才会重置。
+        //
+        // 改法：用原版同款的 MULTIPLY_TOTAL（力量/速度药水那种"总倍率"），它是**幂等**的 ——
+        // 数值只由"基础值 + 其它 ADDITION 修饰符"决定，不会因为反复重算而累积，
+        // 也不再读取 getValue()。这样即使别的系统同时改生命上限，双方也各算各的，互不放大。
+        ensureMultiplyTotal(player, Attributes.MAX_HEALTH, SELF_HEALTH_MOD,
+                "divinebeast_self_hp", bonus);
+        ensureMultiplyTotal(player, Attributes.ATTACK_DAMAGE, SELF_ATTACK_MOD,
+                "divinebeast_self_atk", bonus);
 
         Long lastDealt = LAST_DEALT_TICK.get(player.getUUID());
         if (lastDealt != null && now - lastDealt <= BUFF_GRACE_TICKS) {
@@ -378,20 +396,43 @@ public final class BeastEffects {
         }
     }
 
-    private static void applyMultiplier(Player player,
-                                        net.minecraft.world.entity.ai.attributes.Attribute attribute,
-                                        UUID uuid, double bonusMultiplier) {
+    /**
+     * 幂等地把某属性的 {@code MULTIPLY_TOTAL} 修饰符设成指定倍率（{@code bonus = 1.0} 即 ×2）。
+     *
+     * <p><b>为什么不可以用"读当前值再 ADDITION"</b>：{@code AttributeInstance#getValue()} 返回的是
+     * 本属性<b>所有</b>修饰符叠加后的结果。用"当前值 × 倍率"再以 ADDITION 加回去，等于把别的系统
+     * （盔甲、真者祂、时刻饰品的水位线补偿……）的数值也一起乘进去；而每个 tick 都重算一次，
+     * 就与同样"读当前值"的系统（如 {@code MomentEffects.lockToWatermark} 的历史最高水位线）
+     * 形成互相放大的正反馈，生命上限会在两个数值间无限来回跳。
+     *
+     * <p>MULTIPLY_TOTAL 由原版统一计算（基础值 → 加完所有 ADDITION → 最后乘以 (1 + ΣMULTIPLY_TOTAL)），
+     * 只要不读取 {@code getValue()}，重复设置同一个倍率就是完全幂等的：
+     * 数值不符（含旧版本留下的 ADDITION 修饰符）才会先移除再重加一次。
+     */
+    private static void ensureMultiplyTotal(Player player,
+                                            net.minecraft.world.entity.ai.attributes.Attribute attribute,
+                                            UUID uuid, String name, double multiplier) {
         AttributeInstance instance = player.getAttribute(attribute);
         if (instance == null) {
             return;
         }
-        instance.removeModifier(uuid);
-        double natural = instance.getValue();
-        double delta = natural * bonusMultiplier;
-        if (delta > 0.001D) {
-            instance.addPermanentModifier(new AttributeModifier(uuid, "divinebeast_self", delta,
-                    AttributeModifier.Operation.ADDITION));
+        AttributeModifier existing = instance.getModifier(uuid);
+        if (multiplier <= 0.0D) {
+            if (existing != null) {
+                instance.removeModifier(uuid);
+            }
+            return;
         }
+        if (existing != null
+                && existing.getOperation() == AttributeModifier.Operation.MULTIPLY_TOTAL
+                && Math.abs(existing.getAmount() - multiplier) < 1.0E-6D) {
+            return;   // 已经是我们想要的倍率 → 一个字节都不动
+        }
+        if (existing != null) {
+            instance.removeModifier(uuid);   // 旧存档里可能是 ADDITION 的旧数值，一并换掉
+        }
+        instance.addPermanentModifier(new AttributeModifier(uuid, name, multiplier,
+                AttributeModifier.Operation.MULTIPLY_TOTAL));
     }
 
     private static void clearSelfStageAttributes(Player player) {

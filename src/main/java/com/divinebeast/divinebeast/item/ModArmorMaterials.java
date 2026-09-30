@@ -16,6 +16,9 @@ import java.util.function.Supplier;
  * ——那两张图由 {@code tools/gen_textures.js} 生成。
  *
  * <p>数值刻意对齐原版铁 / 金 / 下界合金，这样换材质不会改变手感；修理材料换成了各自的锭。
+ *
+ * <p><b>耐久（1.7.19 起）</b>：四件套一律 <b>{@value #ARMOR_DURABILITY}</b>，
+ * 与武器 / 工具的 10000 保持一致（原先借用原版档位的 15 / 7 / 37 / 45）。
  */
 public enum ModArmorMaterials implements ArmorMaterial {
 
@@ -32,27 +35,29 @@ public enum ModArmorMaterials implements ArmorMaterial {
      */
 
     /** 『我』：四件套护甲 66 / 韧性 66 */
-    SELF("divinebeast:self", 15, 10, 23, 20, 13, 14,
+    SELF("divinebeast:self", 10, 23, 20, 13, 14,
             SoundEvents.ARMOR_EQUIP_IRON, 16.5F, 0.0F,
             () -> Ingredient.of(ModItems.SELF_INGOT.get())),
 
     /** 『兽』：四件套护甲 77 / 韧性 77 */
-    BEAST("divinebeast:beast", 7, 12, 27, 23, 15, 25,
+    BEAST("divinebeast:beast", 12, 27, 23, 15, 25,
             SoundEvents.ARMOR_EQUIP_GOLD, 19.25F, 0.0F,
             () -> Ingredient.of(ModItems.BEAST_INGOT.get())),
 
     /** 『祂』：四件套护甲 88 / 韧性 88 */
-    HE("divinebeast:he", 37, 13, 31, 26, 18, 15,
+    HE("divinebeast:he", 13, 31, 26, 18, 15,
             SoundEvents.ARMOR_EQUIP_NETHERITE, 22.0F, 0.1F,
             () -> Ingredient.of(ModItems.HE_INGOT.get())),
 
     /** 『三相』：三套效果合一，四件套护甲 99 / 韧性 99 */
-    THREE_PHASE("divinebeast:three_phase", 45, 15, 35, 30, 19, 20,
+    THREE_PHASE("divinebeast:three_phase", 15, 35, 30, 19, 20,
             SoundEvents.ARMOR_EQUIP_NETHERITE, 24.75F, 0.15F,
             () -> Ingredient.of(ModItems.THREE_PHASE_INGOT.get()));
 
+    /** 所有盔甲的耐久上限（与武器 / 工具的 ModTiers.DURABILITY 一致）。 */
+    public static final int ARMOR_DURABILITY = 10000;
+
     private final String name;
-    private final int durabilityMultiplier;
     private final int bootsDefense;
     private final int leggingsDefense;
     private final int chestplateDefense;
@@ -63,12 +68,11 @@ public enum ModArmorMaterials implements ArmorMaterial {
     private final float knockbackResistance;
     private final Supplier<Ingredient> repairIngredient;
 
-    ModArmorMaterials(String name, int durabilityMultiplier,
+    ModArmorMaterials(String name,
                       int bootsDefense, int leggingsDefense, int chestplateDefense, int helmetDefense,
                       int enchantmentValue, SoundEvent equipSound, float toughness, float knockbackResistance,
                       Supplier<Ingredient> repairIngredient) {
         this.name = name;
-        this.durabilityMultiplier = durabilityMultiplier;
         this.bootsDefense = bootsDefense;
         this.leggingsDefense = leggingsDefense;
         this.chestplateDefense = chestplateDefense;
@@ -80,9 +84,10 @@ public enum ModArmorMaterials implements ArmorMaterial {
         this.repairIngredient = repairIngredient;
     }
 
+    /** 耐久上限：四件套一律 10000（不再借用原版各档位的 15 / 7 / 37 / 45 倍率）。 */
     @Override
     public int getDurabilityForType(ArmorItem.Type type) {
-        return durabilityMultiplier;
+        return ARMOR_DURABILITY;
     }
 
     @Override

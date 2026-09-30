@@ -254,11 +254,31 @@ public final class MomentEffects {
         double floor = watermark.getOrDefault(player.getUUID(), natural);
         floor = Math.max(floor, natural);
         watermark.put(player.getUUID(), floor);
-        double delta = floor - natural;
+        // 【BUGFIX 1.7.18】补偿值是 ADDITION，原版的计算顺序是
+        //   总和 = (基础值 + 所有 ADDITION) × (1 + ΣMULTIPLY_TOTAL)
+        // 也就是"先加法、后被倍率整体放大"。所以必须把水位线先折算回**加法域**再补差值；
+        // 若直接补 (floor - natural)，在「兽·自·我」那种 ×12 的总倍率下，
+        // 想补到 1000 会实际补成 12000 —— 表现为生命上限毫无理由地跳到水位线的十几倍。
+        double multiplier = 1.0D + sumMultiplyTotal(instance);
+        if (multiplier < 0.01D) {
+            multiplier = 1.0D;   // 极端情况（总倍率被别的模组压到 0 附近）：退回不折算
+        }
+        double delta = floor / multiplier - natural;
         if (Math.abs(delta) > 0.001D) {
             instance.addPermanentModifier(new AttributeModifier(compUuid, "divinebeast_moment1", delta,
                     AttributeModifier.Operation.ADDITION));
         }
+    }
+
+    /** 该属性上所有 MULTIPLY_TOTAL 修饰符的倍率之和（0.0 表示没有倍率，总倍率 = 1 + 该值）。 */
+    private static double sumMultiplyTotal(AttributeInstance instance) {
+        double sum = 0.0D;
+        for (AttributeModifier modifier : instance.getModifiers()) {
+            if (modifier.getOperation() == AttributeModifier.Operation.MULTIPLY_TOTAL) {
+                sum += modifier.getAmount();
+            }
+        }
+        return sum;
     }
 
     private static boolean hasNoStatDecreaseData(Player player) {
